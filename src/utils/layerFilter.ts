@@ -105,8 +105,7 @@ export class LayerFilter {
 
   // Метод для получения свойств элементов
   public getElementProperties(
-    fields: FormField[],
-    elementName: string
+    fields: FormField[]
   ): FormField[] {
     return fields.filter(
       (field) =>

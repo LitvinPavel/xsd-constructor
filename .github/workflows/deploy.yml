@@ -4,27 +4,64 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm install
-    
-    - name: Build project
-      run: npm run build
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./dist
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Verify project structure
+        run: |
+          # Проверяем наличие основных файлов
+          if [ ! -f "package.json" ]; then
+            echo "❌ package.json not found!"
+            exit 1
+          fi
+          
+          if [ ! -f "vite.config.js" ] && [ ! -f "vite.config.ts" ]; then
+            echo "⚠️ vite.config.js/ts not found, but continuing..."
+          fi
+          
+          echo "✅ Project structure looks good"
+
+      - name: Install dependencies
+        run: |
+          npm install
+          # Или если есть package-lock.json
+          # npm ci
+
+      - name: Build project
+        run: |
+          # Проверяем доступные скрипты
+          echo "Available npm scripts:"
+          npm run
+          
+          # Пытаемся собрать проект
+          npm run build
+          
+          # Проверяем что dist папка создана
+          if [ ! -d "dist" ]; then
+            echo "❌ dist folder was not created!"
+            exit 1
+          fi
+          
+          echo "✅ Build completed successfully"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true

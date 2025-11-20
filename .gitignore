@@ -4,7 +4,6 @@
 # Build Files
 /dist
 /build
-package-lock.json
 
 # local env files
 .env.local

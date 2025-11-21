@@ -1,42 +1,76 @@
+export interface XSDSchema {
+  schemaInfo: {
+    elementFormDefault?: string;
+    attributeFormDefault?: string;
+  };
+  elements: XSDElement[];
+  complexTypes: XSDComplexType[];
+  simpleTypes: XSDSimpleType[];
+}
+
+export interface XSDElement {
+  name: string;
+  type?: string;
+  minOccurs?: string;
+  maxOccurs?: string;
+  annotation?: XSDAnnotation;
+  complexType?: XSDComplexType;
+  simpleType?: XSDSimpleType;
+}
+
+export interface XSDComplexType {
+  name: string;
+  annotation?: XSDAnnotation;
+  sequence?: XSDElement[];
+  all?: XSDElement[];
+  choice?: XSDChoice;
+  attributes?: XSDAttribute[];
+  complexContent?: XSDComplexContent;
+}
+
+export interface XSDComplexContent {
+  extension: {
+    base: string;
+    attributes?: XSDAttribute[];
+  };
+}
+
+export interface XSDChoice {
+  elements: XSDElement[];
+}
+
+export interface XSDSimpleType {
+  name: string;
+  restriction: {
+    base: string;
+    enumerations?: XSDEnumeration[];
+    pattern?: string;
+  };
+}
+
+export interface XSDAttribute {
+  name: string;
+  type?: string;
+  use: string;
+  annotation?: XSDAnnotation;
+  simpleType?: XSDSimpleType;
+}
+
+export interface XSDAnnotation {
+  documentation: string;
+}
+
+export interface XSDEnumeration {
+  value: string;
+  annotation?: XSDAnnotation;
+}
+
 export interface FormField {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'choice' | 'object' | 'array' | 'graph' | 'table' | 'formula';
+  fullName: string;
+  type: string;
   label: string;
   required: boolean;
-  defaultValue?: string | number | boolean;
-  options?: string[];
-  documentation?: string;
-  layer: string;
-  category: string;
-  editable: boolean;
-}
-
-export interface FormData {
-  [key: string]: string | number | boolean | null;
-}
-
-export interface LayerFields {
-  MDATA: FormField[];
-  VIEW: FormField[];
-  DMODEL: FormField[];
-  OTHER: FormField[];
-}
-
-export interface ParsingResult {
-  success: boolean;
-  fields: FormField[];
-  error?: string;
-}
-
-export interface LayerConfig {
-  name: string;
-  displayName: string;
-  visible: boolean;
-  categories: CategoryConfig[];
-}
-
-export interface CategoryConfig {
-  name: string;
-  displayName: string;
-  editableTypes: FormField['type'][];
+  value: any;
+  options?: string[]; // для enumerations
 }

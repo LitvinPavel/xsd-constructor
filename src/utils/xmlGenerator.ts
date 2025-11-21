@@ -1,104 +1,179 @@
 import * as xmlbuilder from 'xmlbuilder';
-import type { FormField, FormData, XMLGenerationResult } from '../types';
+
+import type { XSDSchema } from '../types';
 
 export class XMLGenerator {
-  public generateXML(
-    formData: FormData,
-    fields: FormField[]
-  ): XMLGenerationResult {
-    try {
-      if (!formData || Object.keys(formData).length === 0) {
-        return {
-          success: false,
-          xml: '',
-          error: 'No form data provided',
-        };
+  static generateXML(
+    formData: Record<string, any>,
+    schema: XSDSchema | null,
+    rootElementName: string = 'Requirement'
+  ): string {
+    const xml = xmlbuilder.create(rootElementName, {
+      version: '1.0',
+      encoding: 'UTF-8',
+    });
+
+    this.buildXML(xml, formData, schema);
+
+    return xml.end({ pretty: true });
+  }
+
+  private static buildXML(
+    xml: any,
+    data: Record<string, any>,
+    schema: XSDSchema | null,
+    parentElementName: string = ''
+  ): void {
+    for (const [key, value] of Object.entries(data)) {
+      // Пропускаем пустые значения
+      if (this.isEmptyValue(value)) {
+        continue;
       }
 
-      if (!fields || fields.length === 0) {
-        return {
-          success: false,
-          xml: '',
-          error: 'No fields provided',
-        };
-      }
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        // Вложенный объект - создаем элемент и рекурсивно обрабатываем
+        const child = xml.ele(key);
 
-      // Создаем корневой элемент
-      const root = xmlbuilder.create('root', {
-        version: '1.0',
-        encoding: 'UTF-8',
-      });
+        // Добавляем атрибуты если есть в схеме
+        this.addAttributes(child, key, schema, parentElementName);
 
-      // Группировка полей по слоям
-      const layers: Map<string, FormField[]> = new Map();
-
-      fields.forEach((field: FormField) => {
-        const layerFields = layers.get(field.layer) || [];
-        layerFields.push(field);
-        layers.set(field.layer, layerFields);
-      });
-
-      // Создание XML структуры
-      layers.forEach((layerFields: FormField[], layerName: string) => {
-        if (layerFields.length > 0) {
-          const layerElement = root.ele(layerName.toLowerCase());
-
-          layerFields.forEach((field: FormField) => {
-            const value = formData[field.name];
-            if (value !== undefined && value !== null && value !== '') {
-              const stringValue = String(value);
-              if (stringValue) {
-                layerElement.ele(field.name, {}, stringValue);
-              }
+        this.buildXML(child, value, schema, key);
+      } else if (Array.isArray(value)) {
+        // Массив - создаем элементы для каждого непустого значения
+        value.forEach((item) => {
+          if (!this.isEmptyValue(item)) {
+            if (typeof item === 'object') {
+              const child = xml.ele(key);
+              this.addAttributes(child, key, schema, parentElementName);
+              this.buildXML(child, item, schema, key);
+            } else {
+              const child = xml.ele(key, item.toString());
+              this.addAttributes(child, key, schema, parentElementName);
             }
-          });
-        }
-      });
-
-      const xmlString = root.end({ pretty: true });
-
-      return {
-        success: true,
-        xml: xmlString,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        xml: '',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unknown XML generation error',
-      };
+          }
+        });
+      } else {
+        // Простое значение - создаем элемент с текстом
+        const child = xml.ele(key, value.toString());
+        this.addAttributes(child, key, schema, parentElementName);
+      }
     }
   }
 
-  public downloadXML(
-    xmlContent: string,
-    filename: string = 'form-data.xml'
+  private static addAttributes(
+    xmlElement: any,
+    elementName: string,
+    schema: XSDSchema | null,
+    parentElementName: string = ''
   ): void {
-    if (!xmlContent) {
-      console.error('No XML content to download');
-      return;
+    if (!schema) return;
+
+    // Ищем элемент в схеме
+    const element = this.findElementInSchema(
+      elementName,
+      parentElementName,
+      schema
+    );
+    if (!element || !element.complexType?.attributes) return;
+
+    // Добавляем атрибуты из схемы
+    element.complexType.attributes.forEach((attr) => {
+      // Для обязательных атрибутов добавляем значения по умолчанию
+      if (attr.use === 'required') {
+        const defaultValue = this.getDefaultAttributeValue(attr);
+        if (defaultValue !== null) {
+          xmlElement.att(attr.name, defaultValue);
+        }
+      }
+      // Для необязательных атрибутов можно добавить логику если нужно
+    });
+  }
+
+  private static findElementInSchema(
+    elementName: string,
+    parentElementName: string,
+    schema: XSDSchema
+  ): any {
+    // Сначала ищем в корневых элементах
+    let element = schema.elements.find((el) => el.name === elementName);
+    if (element) return element;
+
+    // Ищем во вложенных complexType
+    if (parentElementName) {
+      const parentElement = schema.elements.find(
+        (el) => el.name === parentElementName
+      );
+      if (parentElement?.complexType?.sequence) {
+        element = parentElement.complexType.sequence.find(
+          (el) => el.name === elementName
+        );
+      }
+      if (parentElement?.complexType?.all) {
+        element = parentElement.complexType.all.find(
+          (el) => el.name === elementName
+        );
+      }
     }
 
-    // Создаем Blob с XML содержимым
+    // Ищем в complexTypes
+    if (!element) {
+      for (const complexType of schema.complexTypes) {
+        if (complexType.sequence) {
+          element = complexType.sequence.find((el) => el.name === elementName);
+          if (element) break;
+        }
+        if (complexType.all) {
+          element = complexType.all.find((el) => el.name === elementName);
+          if (element) break;
+        }
+      }
+    }
+
+    return element;
+  }
+
+  private static getDefaultAttributeValue(attribute: any): string | null {
+    if (attribute.simpleType?.restriction?.enumerations) {
+      return attribute.simpleType.restriction.enumerations[0]?.value || null;
+    }
+
+    switch (attribute.type) {
+      case 'xs:string':
+        return '';
+      case 'xs:integer':
+      case 'xs:decimal':
+        return '0';
+      case 'xs:boolean':
+        return 'false';
+      case 'xs:date':
+        return new Date().toISOString().split('T')[0];
+      default:
+        return null;
+    }
+  }
+
+  private static isEmptyValue(value: any): boolean {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string' && value.trim() === '') return true;
+    if (typeof value === 'number' && isNaN(value)) return true;
+    if (Array.isArray(value) && value.length === 0) return true;
+    if (typeof value === 'object' && Object.keys(value).length === 0)
+      return true;
+    return false;
+  }
+
+  static downloadXML(
+    xmlContent: string,
+    filename: string = 'generated.xml'
+  ): void {
     const blob = new Blob([xmlContent], { type: 'application/xml' });
-
-    // Создаем URL для Blob
     const url = URL.createObjectURL(blob);
-
-    // Создаем временную ссылку для скачивания
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
-
-    // Добавляем ссылку в DOM, кликаем и удаляем
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // Освобождаем URL
     URL.revokeObjectURL(url);
   }
 }

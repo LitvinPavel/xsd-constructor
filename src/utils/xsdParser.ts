@@ -1,417 +1,305 @@
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import type {
-  FormField,
-  ParsingResult,
-  XSDRoot,
+  XSDSchema,
   XSDElement,
-  XSDSimpleType,
-  XSDEnumeration,
   XSDComplexType,
+  XSDSimpleType,
+  XSDAnnotation,
+  XSDEnumeration,
+  XSDChoice
 } from '../types';
 
-export class XSDParser {
+class XSDParser {
   private parser: XMLParser;
 
   constructor() {
     this.parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
+      textNodeName: '#text',
+      allowBooleanAttributes: true,
       parseAttributeValue: true,
       trimValues: true,
-      allowBooleanAttributes: false,
-      parseTagValue: false,
+      alwaysCreateTextNode: true,
+      preserveOrder: false,
+      isArray: (name, jpath, isLeafNode, isAttribute) => {
+        const arrayPaths = [
+          'xs:schema.xs:element',
+          'xs:schema.xs:complexType',
+          'xs:schema.xs:simpleType',
+          'xs:complexType.xs:sequence.xs:element',
+          'xs:complexType.xs:all.xs:element',
+          'xs:complexType.xs:choice.xs:element',
+          'xs:complexType.xs:attribute',
+          'xs:simpleType.xs:restriction.xs:enumeration',
+          'xs:element.xs:simpleType.xs:restriction.xs:enumeration',
+        ];
+        return arrayPaths.some((path) => jpath.endsWith(path));
+      },
     });
   }
 
-  private parseXSDType(xsdType: string): FormField['type'] {
-    const typeMap: Map<string, FormField['type']> = new Map([
-      ['xs:string', 'string'],
-      ['xs:integer', 'number'],
-      ['xs:decimal', 'number'],
-      ['xs:boolean', 'boolean'],
-      ['xs:date', 'date'],
-      ['string', 'string'],
-      ['integer', 'number'],
-      ['decimal', 'number'],
-      ['boolean', 'boolean'],
-      ['date', 'date'],
-      // Специфические типы из схемы
-      ['KSIdentification', 'string'],
-      ['RegElement', 'object'],
-      ['GraphElement', 'graph'],
-      ['TableElement', 'table'],
-      ['FormulaElement', 'formula'],
-      ['Entity', 'object'],
-      ['Property', 'object'],
-      ['Relation', 'object'],
-      ['Constraint', 'object'],
-    ]);
-
-    return typeMap.get(xsdType) || 'string';
-  }
-
-  private extractDocumentation(element: XSDElement): string {
-    const annotation = element['xs:annotation'];
-    if (!annotation) return '';
-
-    const documentation = annotation['xs:documentation'];
-    if (typeof documentation === 'string') {
-      return documentation;
-    } else if (
-      documentation &&
-      typeof documentation === 'object' &&
-      '#text' in documentation
-    ) {
-      return documentation['#text'] || '';
-    }
-
-    return '';
-  }
-
-  private parseSimpleType(simpleType: XSDSimpleType): {
-    type: FormField['type'];
-    options?: string[];
-  } {
-    const restriction = simpleType['xs:restriction'];
-    if (!restriction) return { type: 'string' };
-
-    const enumeration = restriction['xs:enumeration'];
-    if (!enumeration) return { type: 'string' };
-
-    let options: string[] = [];
-
-    if (Array.isArray(enumeration)) {
-      options = enumeration
-        .map((enumItem: XSDEnumeration) => enumItem['@_value'])
-        .filter(Boolean);
-    } else if (
-      enumeration &&
-      typeof enumeration === 'object' &&
-      '@_value' in enumeration
-    ) {
-      options = [enumeration['@_value']];
-    }
-
-    return {
-      type: options.length > 0 ? 'choice' : 'string',
-      options: options.length > 0 ? options : undefined,
-    };
-  }
-
-  private detectLayer(elementName: string, elementType: string): string {
-    const name = elementName.toLowerCase();
-    const type = elementType.toLowerCase();
-
-    if (
-      name.includes('mdata') ||
-      type.includes('mdata') ||
-      name.includes('doc') ||
-      name.includes('req') ||
-      name.includes('metadata')
-    ) {
-      return 'MDATA';
-    }
-
-    if (
-      name.includes('dmodel') ||
-      type.includes('dmodel') ||
-      name.includes('entity') ||
-      name.includes('relation') ||
-      name.includes('constraint') ||
-      name.includes('property')
-    ) {
-      return 'DMODEL';
-    }
-
-    if (
-      name.includes('view') ||
-      type.includes('view') ||
-      name.includes('text') ||
-      name.includes('graph') ||
-      name.includes('table') ||
-      name.includes('formula') ||
-      name.includes('element')
-    ) {
-      return 'VIEW';
-    }
-
-    return 'OTHER';
-  }
-
-  private detectCategory(elementName: string, elementType: string): string {
-    const name = elementName.toLowerCase();
-    const type = elementType.toLowerCase();
-
-    // MDATA категории
-    if (name.includes('doc') || type.includes('doc')) return 'DocMetadata';
-    if (name.includes('req') || type.includes('req')) return 'ReqMetadata';
-
-    // DMODEL категории
-    if (name.includes('entity') || type.includes('entity')) return 'Entities';
-    if (name.includes('relation') || type.includes('relation'))
-      return 'Relations';
-    if (name.includes('constraint') || type.includes('constraint'))
-      return 'Constraints';
-    if (name.includes('property') || type.includes('property'))
-      return 'Properties';
-
-    // VIEW категории
-    if (name.includes('text') || type.includes('text')) return 'TextView';
-    if (name.includes('graph') || type.includes('graph')) return 'GraphView';
-    if (name.includes('table') || type.includes('table')) return 'TableView';
-    if (name.includes('formula') || type.includes('formula'))
-      return 'FormulasView';
-
-    return 'GENERAL';
-  }
-
-  private isFieldEditable(
-    fieldType: FormField['type'],
-    category: string
-  ): boolean {
-    // Всегда редактируемы строковые поля
-    if (fieldType === 'string') return true;
-
-    // Проверяем категории, где разрешены нестроковые типы
-    switch (category) {
-      case 'DocMetadata':
-      case 'ReqMetadata':
-        // В MDATA редактируемы все типы
-        return true;
-
-      case 'TextView':
-        // В TextView редактируемы только строковые поля (уже обработано выше)
-        return false;
-
-      case 'Properties':
-        // В Properties редактируемы только строковые поля (уже обработано выше)
-        return false;
-
-      default:
-        // Все остальные случаи - не редактируемы
-        return false;
-    }
-  }
-
-  private extractAttributesFromComplexType(
-    complexType: XSDComplexType
-  ): FormField[] {
-    const fields: FormField[] = [];
-
-    // Обработка sequence элементов
-    const sequence = complexType['xs:sequence'];
-    if (sequence && sequence['xs:element']) {
-      const elements = Array.isArray(sequence['xs:element'])
-        ? sequence['xs:element']
-        : [sequence['xs:element']];
-
-      elements.forEach((element: XSDElement) => {
-        const name = element['@_name'];
-        const type = element['@_type'];
-
-        if (name && type) {
-          const fieldType = this.parseXSDType(type);
-          const documentation = this.extractDocumentation(element);
-          const minOccurs = element['@_minOccurs'];
-
-          fields.push({
-            name,
-            type: fieldType,
-            label: name,
-            required: minOccurs === '1',
-            documentation,
-            layer: 'DMODEL',
-            category: 'Properties',
-            editable: this.isFieldEditable(fieldType, 'Properties'),
-          });
-        }
-      });
-    }
-
-    return fields;
-  }
-
-  private processComplexElement(
-    element: XSDElement,
-    fields: FormField[]
-  ): void {
-    const name = element['@_name'];
-    const type = element['@_type'];
-
-    if (!name) return;
-
-    const documentation = this.extractDocumentation(element);
-    const layer = this.detectLayer(name, type || '');
-    const category = this.detectCategory(name, type || '');
-
-    // Определяем тип элемента
-    let fieldType: FormField['type'] = 'string';
-    if (type) {
-      fieldType = this.parseXSDType(type);
-    } else if (element['xs:complexType']) {
-      // Если это сложный тип без явного type, анализируем содержимое
-      element['xs:complexType'];
-      if (name.includes('Graph') || name.includes('TagDocument')) {
-        fieldType = 'graph';
-      } else if (name.includes('Table')) {
-        fieldType = 'table';
-      } else if (name.includes('Formula')) {
-        fieldType = 'formula';
-      } else if (
-        name.includes('Entity') ||
-        name.includes('Relation') ||
-        name.includes('Constraint')
-      ) {
-        fieldType = 'object';
+  public parseXSDToJSON(xsdContent: string): XSDSchema {
+    try {
+      const validationResult = XMLValidator.validate(xsdContent);
+      if (validationResult !== true) {
+        throw new Error(`Invalid XML: ${validationResult.err.msg}`);
       }
+
+      const parsedData = this.parser.parse(xsdContent);
+      return this.transformToStructuredJSON(parsedData);
+    } catch (error) {
+      console.error('Error parsing XSD:', error);
+      throw error;
     }
+  }
 
-    const editable = this.isFieldEditable(fieldType, category);
+  private transformToStructuredJSON(parsedData: any): XSDSchema {
+    const schema = parsedData['xs:schema'];
 
-    // Добавляем основной элемент
-    fields.push({
-      name,
-      type: fieldType,
-      label: name,
-      required: false,
-      documentation,
-      layer,
-      category,
-      editable,
-    });
+    const result: XSDSchema = {
+      schemaInfo: {
+        elementFormDefault: schema['@_elementFormDefault'],
+        attributeFormDefault: schema['@_attributeFormDefault'],
+      },
+      elements: [],
+      complexTypes: [],
+      simpleTypes: [],
+    };
 
-    // Обрабатываем вложенные элементы сложного типа
-    const complexType = element['xs:complexType'];
-    if (complexType) {
-      const nestedFields = this.extractAttributesFromComplexType(complexType);
-      fields.push(...nestedFields);
-    }
+    if (schema['xs:element']) {
+      const elements = Array.isArray(schema['xs:element'])
+        ? schema['xs:element']
+        : [schema['xs:element']];
 
-    // Рекурсивная обработка вложенных элементов
-    const sequence = complexType?.['xs:sequence'];
-    const childElement = sequence?.['xs:element'];
-
-    if (childElement) {
-      const children: XSDElement[] = Array.isArray(childElement)
-        ? childElement
-        : [childElement];
-      children.forEach((child: XSDElement) =>
-        this.processComplexElement(child, fields)
+      result.elements = elements.map((element: any) =>
+        this.processElement(element)
       );
     }
-  }
 
-  private processElement(element: XSDElement, fields: FormField[]): void {
-    const name = element['@_name'];
-    const type = element['@_type'];
+    if (schema['xs:complexType']) {
+      const complexTypes = Array.isArray(schema['xs:complexType'])
+        ? schema['xs:complexType']
+        : [schema['xs:complexType']];
 
-    if (!name) return;
-
-    // Пропускаем элементы с расширениями (extension)
-    const complexType = element['xs:complexType'];
-    if (complexType && complexType['xs:complexContent']?.['xs:extension']) {
-      // Это расширение типа, обрабатываем как сложный элемент
-      this.processComplexElement(element, fields);
-      return;
+      result.complexTypes = complexTypes.map((complexType: any) =>
+        this.processComplexType(complexType)
+      );
     }
 
-    const minOccurs = element['@_minOccurs'];
-    const documentation = this.extractDocumentation(element);
-    const layer = this.detectLayer(name, type || '');
-    const category = this.detectCategory(name, type || '');
+    if (schema['xs:simpleType']) {
+      const simpleTypes = Array.isArray(schema['xs:simpleType'])
+        ? schema['xs:simpleType']
+        : [schema['xs:simpleType']];
 
-    const baseField: Omit<FormField, 'type' | 'options' | 'editable'> = {
-      name,
-      label: name,
-      required: minOccurs === '1',
-      documentation,
-      layer,
-      category,
+      result.simpleTypes = simpleTypes.map((simpleType: any) =>
+        this.processSimpleType(simpleType)
+      );
+    }
+
+    return result;
+  }
+
+  private processElement(element: any): XSDElement {
+    const processedElement: XSDElement = {
+      name: element['@_name'],
+      type: element['@_type'],
+      minOccurs: element['@_minOccurs'],
+      maxOccurs: element['@_maxOccurs'],
     };
 
-    // Обработка простых типов с перечислениями
-    const simpleType = element['xs:simpleType'];
-    if (simpleType) {
-      const simpleTypeInfo = this.parseSimpleType(simpleType);
-      const fieldType = simpleTypeInfo.type;
-      const editable = this.isFieldEditable(fieldType, category);
-
-      fields.push({
-        ...baseField,
-        type: fieldType,
-        options: simpleTypeInfo.options,
-        editable,
-      } as FormField);
-    } else {
-      // Обычный тип
-      const fieldType = type ? this.parseXSDType(type) : 'string';
-      const editable = this.isFieldEditable(fieldType, category);
-
-      fields.push({
-        ...baseField,
-        type: fieldType,
-        editable,
-      } as FormField);
+    if (element['xs:annotation']) {
+      processedElement.annotation = this.processAnnotation(
+        element['xs:annotation']
+      );
     }
 
-    // Рекурсивная обработка вложенных элементов
-    if (complexType) {
-      const sequence = complexType['xs:sequence'];
-      const childElement = sequence?.['xs:element'];
+    if (element['xs:complexType']) {
+      processedElement.complexType = this.processComplexType(
+        element['xs:complexType']
+      );
+    }
 
-      if (childElement) {
-        const children: XSDElement[] = Array.isArray(childElement)
-          ? childElement
-          : [childElement];
-        children.forEach((child: XSDElement) =>
-          this.processElement(child, fields)
+    if (element['xs:simpleType']) {
+      processedElement.simpleType = this.processSimpleType(
+        element['xs:simpleType']
+      );
+    }
+
+    return processedElement;
+  }
+
+  private processComplexType(complexType: any): XSDComplexType {
+    const processedComplexType: XSDComplexType = {
+      name: complexType['@_name'],
+    };
+
+    if (complexType['xs:annotation']) {
+      processedComplexType.annotation = this.processAnnotation(
+        complexType['xs:annotation']
+      );
+    }
+
+    if (complexType['xs:sequence']) {
+      processedComplexType.sequence = this.processSequence(
+        complexType['xs:sequence']
+      );
+    }
+
+    if (complexType['xs:all']) {
+      processedComplexType.all = this.processAll(complexType['xs:all']);
+    }
+
+    if (complexType['xs:choice']) {
+      processedComplexType.choice = this.processChoice(
+        complexType['xs:choice']
+      );
+    }
+
+    if (complexType['xs:attribute']) {
+      const attributes = Array.isArray(complexType['xs:attribute'])
+        ? complexType['xs:attribute']
+        : [complexType['xs:attribute']];
+
+      processedComplexType.attributes = attributes.map((attr: any) =>
+        this.processAttribute(attr)
+      );
+    }
+
+    return processedComplexType;
+  }
+
+  private processSimpleType(simpleType: any): XSDSimpleType {
+    const processedSimpleType: XSDSimpleType = {
+      name: simpleType['@_name'],
+      restriction: {
+        base: '',
+        enumerations: undefined,
+        pattern: undefined
+      }
+    };
+
+    if (simpleType['xs:restriction']) {
+      const restriction = simpleType['xs:restriction'];
+      processedSimpleType.restriction = {
+        base: restriction['@_base'],
+      };
+
+      if (restriction['xs:enumeration']) {
+        const enumerations = Array.isArray(restriction['xs:enumeration'])
+          ? restriction['xs:enumeration']
+          : [restriction['xs:enumeration']];
+
+        processedSimpleType.restriction.enumerations = enumerations.map(
+          (enumItem: any) => this.processEnumeration(enumItem)
         );
       }
+
+      if (restriction['xs:pattern']) {
+        processedSimpleType.restriction.pattern =
+          restriction['xs:pattern']['@_value'];
+      }
     }
+
+    return processedSimpleType;
   }
 
-  public parseXSD(xsdContent: string): ParsingResult {
-    try {
-      const parsed: XSDRoot = this.parser.parse(xsdContent);
+  private processEnumeration(enumItem: any): XSDEnumeration {
+    const enumeration: XSDEnumeration = {
+      value: enumItem['@_value'],
+    };
 
-      const fields: FormField[] = [];
-      const schema = parsed['xs:schema'];
-
-      if (!schema) {
-        return {
-          success: false,
-          fields: [],
-          error: 'No schema found in XSD',
-        };
-      }
-
-      const elements = schema['xs:element'];
-      if (!elements) {
-        return {
-          success: false,
-          fields: [],
-          error: 'No elements found in schema',
-        };
-      }
-
-      const elementArray: XSDElement[] = Array.isArray(elements)
-        ? elements
-        : [elements];
-
-      elementArray.forEach((element: XSDElement) => {
-        this.processElement(element, fields);
-      });
-
-      return {
-        success: true,
-        fields,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        fields: [],
-        error: error instanceof Error ? error.message : 'Unknown parsing error',
-      };
+    if (enumItem['xs:annotation']) {
+      enumeration.annotation = this.processAnnotation(
+        enumItem['xs:annotation']
+      );
     }
+
+    return enumeration;
+  }
+
+  private processSequence(sequence: any): XSDElement[] {
+    if (!sequence['xs:element']) return [];
+
+    const elements = Array.isArray(sequence['xs:element'])
+      ? sequence['xs:element']
+      : [sequence['xs:element']];
+
+    return elements.map((element: any) => this.processElement(element));
+  }
+
+  private processAll(all: any): XSDElement[] {
+    if (!all['xs:element']) return [];
+
+    const elements = Array.isArray(all['xs:element'])
+      ? all['xs:element']
+      : [all['xs:element']];
+
+    return elements.map((element: any) => this.processElement(element));
+  }
+
+  private processChoice(choice: any): XSDChoice {
+    const processedChoice: XSDChoice = {
+      elements: [],
+    };
+
+    if (choice['xs:element']) {
+      const elements = Array.isArray(choice['xs:element'])
+        ? choice['xs:element']
+        : [choice['xs:element']];
+
+      processedChoice.elements = elements.map((element: any) =>
+        this.processElement(element)
+      );
+    }
+
+    return processedChoice;
+  }
+
+  private processAttribute(attribute: any): any {
+    const processedAttribute: any = {
+      name: attribute['@_name'],
+      type: attribute['@_type'],
+      use: attribute['@_use'],
+    };
+
+    if (attribute['xs:annotation']) {
+      processedAttribute.annotation = this.processAnnotation(
+        attribute['xs:annotation']
+      );
+    }
+
+    if (attribute['xs:simpleType']) {
+      processedAttribute.simpleType = this.processSimpleType(
+        attribute['xs:simpleType']
+      );
+    }
+
+    return processedAttribute;
+  }
+
+  private processAnnotation(annotation: any): XSDAnnotation {
+    const processedAnnotation: XSDAnnotation = {
+      documentation: '',
+    };
+
+    if (annotation['xs:documentation']) {
+      const documentation = annotation['xs:documentation'];
+
+      if (typeof documentation === 'string') {
+        processedAnnotation.documentation = documentation;
+      } else if (documentation['#text']) {
+        processedAnnotation.documentation = documentation['#text'];
+      } else if (typeof documentation === 'object') {
+        processedAnnotation.documentation =
+          documentation['#text'] ||
+          documentation['@_text'] ||
+          JSON.stringify(documentation);
+      }
+    }
+
+    return processedAnnotation;
   }
 }
+
+export { XSDParser };

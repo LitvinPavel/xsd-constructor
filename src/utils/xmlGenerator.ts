@@ -77,7 +77,7 @@ export class XMLGenerator {
     if (!element || !element.complexType?.attributes) return;
 
     // Добавляем атрибуты из схемы
-    element.complexType.attributes.forEach((attr) => {
+    element.complexType.attributes.forEach((attr: { use: string; name: any; }) => {
       // Для обязательных атрибутов добавляем значения по умолчанию
       if (attr.use === 'required') {
         const defaultValue = this.getDefaultAttributeValue(attr);
@@ -132,7 +132,7 @@ export class XMLGenerator {
     return element;
   }
 
-  private static getDefaultAttributeValue(attribute: any): string | null {
+  private static getDefaultAttributeValue(attribute: any): string | null | undefined {
     if (attribute.simpleType?.restriction?.enumerations) {
       return attribute.simpleType.restriction.enumerations[0]?.value || null;
     }

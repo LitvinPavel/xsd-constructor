@@ -22,7 +22,7 @@ class XSDParser {
       trimValues: true,
       alwaysCreateTextNode: true,
       preserveOrder: false,
-      isArray: (name, jpath, isLeafNode, isAttribute) => {
+      isArray: (_name, jpath) => {
         const arrayPaths = [
           'xs:schema.xs:element',
           'xs:schema.xs:complexType',

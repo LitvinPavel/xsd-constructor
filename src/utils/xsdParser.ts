@@ -1,13 +1,6 @@
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 
 // Типы для структуры XSD схемы
-interface XSDSchema {
-  elementFormDefault?: string;
-  attributeFormDefault?: string;
-  elements: { [key: string]: XSDElement };
-  complexTypes: { [key: string]: XSDComplexType };
-  simpleTypes: { [key: string]: XSDSimpleType };
-}
 
 interface XSDElement {
   name: string;
@@ -320,26 +313,6 @@ class XSDParser {
     return processedChoice;
   }
 
-  private processAttribute(attribute: any): any {
-    const processedAttribute: any = {
-      name: attribute['@_name'],
-      type: attribute['@_type'],
-      use: attribute['@_use']
-    };
-
-    // Обработка аннотации
-    if (attribute['xs:annotation']) {
-      processedAttribute.annotation = this.processAnnotation(attribute['xs:annotation']);
-    }
-
-    // Обработка simpleType внутри атрибута
-    if (attribute['xs:simpleType']) {
-      processedAttribute.simpleType = this.processSimpleType(attribute['xs:simpleType']);
-    }
-
-    return processedAttribute;
-  }
-
   private processComplexContent(complexContent: any): any {
     if (complexContent['xs:extension']) {
       const extension = complexContent['xs:extension'];
@@ -402,7 +375,7 @@ function parseXSDWithDocumentation(xsdContent: string): any {
     preserveOrder: false,
     processEntities: true,
     htmlEntities: true,
-    isArray: (name, jpath, isLeafNode, isAttribute) => {
+    isArray: (name) => {
       const arrayElements = [
         'xs:element', 'xs:complexType', 'xs:simpleType', 
         'xs:attribute', 'xs:enumeration', 'xs:sequence',

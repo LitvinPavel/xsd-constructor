@@ -70,7 +70,7 @@ function processElement(parent: any, element: XSDElement): void {
 
   // Обработка complexType с all
   if (element.complexType?.all) {
-    for (const [key, childElement] of Object.entries(element.complexType.all)) {
+    for (const [_key, childElement] of Object.entries(element.complexType.all)) {
       if (childElement && childElement.name) {
         const childNode = parent.ele(childElement.name);
         processElement(childNode, childElement);
@@ -143,7 +143,7 @@ function processRootElement(parent: any, rootElement: XSDElement): void {
   }
 
   // Обрабатываем все дочерние элементы корневого элемента
-  for (const [key, childElement] of Object.entries(rootElement.complexType.sequence)) {
+  for (const [_key, childElement] of Object.entries(rootElement.complexType.sequence)) {
     if (childElement?.name) {
       processElementWithValidation(parent, childElement);
     }

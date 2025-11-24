@@ -1,22 +1,82 @@
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
-import type {
-  XSDSchema,
-  XSDElement,
-  XSDComplexType,
-  XSDSimpleType,
-  XSDAnnotation,
-  XSDEnumeration,
-  XSDChoice
-} from '../types';
 
+// Типы для структуры XSD схемы
+interface XSDSchema {
+  elementFormDefault?: string;
+  attributeFormDefault?: string;
+  elements: { [key: string]: XSDElement };
+  complexTypes: { [key: string]: XSDComplexType };
+  simpleTypes: { [key: string]: XSDSimpleType };
+}
+
+interface XSDElement {
+  name: string;
+  type?: string;
+  minOccurs?: string;
+  maxOccurs?: string;
+  annotation?: XSDAnnotation;
+  complexType?: XSDComplexType;
+  simpleType?: XSDSimpleType;
+  value?: any;
+}
+
+interface XSDComplexType {
+  name: string;
+  annotation?: XSDAnnotation;
+  sequence?: { [key: string]: XSDElement };
+  all?: { [key: string]: XSDElement };
+  choice?: XSDChoice;
+  attributes?: { [key: string]: XSDAttribute };
+  complexContent?: XSDComplexContent;
+}
+
+interface XSDComplexContent {
+  extension: {
+    base: string;
+    attributes?: { [key: string]: XSDAttribute };
+  };
+}
+
+interface XSDChoice {
+  elements: { [key: string]: XSDElement };
+}
+
+interface XSDSimpleType {
+  name: string;
+  restriction: {
+    base: string;
+    enumerations?: XSDEnumeration[];
+    pattern?: string;
+  };
+}
+
+interface XSDAttribute {
+  name: string;
+  type?: string;
+  use: string;
+  annotation?: XSDAnnotation;
+  simpleType?: XSDSimpleType;
+  value?: any;
+}
+
+interface XSDAnnotation {
+  documentation: string;
+}
+
+interface XSDEnumeration {
+  value: string;
+  annotation?: XSDAnnotation;
+}
+
+// Класс парсера XSD
 class XSDParser {
   private parser: XMLParser;
 
   constructor() {
     this.parser = new XMLParser({
       ignoreAttributes: false,
-      attributeNamePrefix: '@_',
-      textNodeName: '#text',
+      attributeNamePrefix: "@_",
+      textNodeName: "#text",
       allowBooleanAttributes: true,
       parseAttributeValue: true,
       trimValues: true,
@@ -32,21 +92,26 @@ class XSDParser {
           'xs:complexType.xs:choice.xs:element',
           'xs:complexType.xs:attribute',
           'xs:simpleType.xs:restriction.xs:enumeration',
-          'xs:element.xs:simpleType.xs:restriction.xs:enumeration',
+          'xs:element.xs:simpleType.xs:restriction.xs:enumeration'
         ];
-        return arrayPaths.some((path) => jpath.endsWith(path));
-      },
+        return arrayPaths.some(path => jpath.endsWith(path));
+      }
     });
   }
 
-  public parseXSDToJSON(xsdContent: string): XSDSchema {
+  // Основной метод парсинга
+  public parseXSDToJSON(xsdContent: string): any {
     try {
+      // Валидация XML
       const validationResult = XMLValidator.validate(xsdContent);
       if (validationResult !== true) {
         throw new Error(`Invalid XML: ${validationResult.err.msg}`);
       }
 
+      // Парсинг XML
       const parsedData = this.parser.parse(xsdContent);
+      
+      // Преобразование в структурированный JSON
       return this.transformToStructuredJSON(parsedData);
     } catch (error) {
       console.error('Error parsing XSD:', error);
@@ -54,150 +119,152 @@ class XSDParser {
     }
   }
 
-  private transformToStructuredJSON(parsedData: any): XSDSchema {
+  // Преобразование сырых данных в структурированный JSON
+  private transformToStructuredJSON(parsedData: any): any {
     const schema = parsedData['xs:schema'];
-
-    const result: XSDSchema = {
+    
+    const result: any = {
       schemaInfo: {
         elementFormDefault: schema['@_elementFormDefault'],
-        attributeFormDefault: schema['@_attributeFormDefault'],
+        attributeFormDefault: schema['@_attributeFormDefault']
       },
-      elements: [],
-      complexTypes: [],
-      simpleTypes: [],
+      elements: {},
+      complexTypes: {},
+      simpleTypes: {}
     };
 
+    // Обработка элементов как объекта
     if (schema['xs:element']) {
-      const elements = Array.isArray(schema['xs:element'])
-        ? schema['xs:element']
+      const elements = Array.isArray(schema['xs:element']) 
+        ? schema['xs:element'] 
         : [schema['xs:element']];
-
-      result.elements = elements.map((element: any) =>
-        this.processElement(element)
-      );
+      
+      result.elements = this.arrayToObject(elements, 'name');
     }
 
+    // Обработка complex types как объекта
     if (schema['xs:complexType']) {
-      const complexTypes = Array.isArray(schema['xs:complexType'])
-        ? schema['xs:complexType']
+      const complexTypes = Array.isArray(schema['xs:complexType']) 
+        ? schema['xs:complexType'] 
         : [schema['xs:complexType']];
-
-      result.complexTypes = complexTypes.map((complexType: any) =>
-        this.processComplexType(complexType)
-      );
+      
+      result.complexTypes = this.arrayToObject(complexTypes, 'name');
     }
 
+    // Обработка simple types как объекта
     if (schema['xs:simpleType']) {
-      const simpleTypes = Array.isArray(schema['xs:simpleType'])
-        ? schema['xs:simpleType']
+      const simpleTypes = Array.isArray(schema['xs:simpleType']) 
+        ? schema['xs:simpleType'] 
         : [schema['xs:simpleType']];
-
-      result.simpleTypes = simpleTypes.map((simpleType: any) =>
-        this.processSimpleType(simpleType)
-      );
+      
+      result.simpleTypes = this.arrayToObject(simpleTypes, 'name');
     }
 
     return result;
   }
 
-  private processElement(element: any): XSDElement {
-    const processedElement: XSDElement = {
+  private arrayToObject(array: any[], keyField: string): { [key: string]: any } {
+    const obj: { [key: string]: any } = {};
+    array.forEach((item, index) => {
+      const key = item['@_' + keyField] || item[keyField] || `item_${index}`;
+      obj[key] = this.processElement(item);
+    });
+    return obj;
+  }
+
+  private processElement(element: any): any {
+    const processedElement: any = {
       name: element['@_name'],
       type: element['@_type'],
       minOccurs: element['@_minOccurs'],
-      maxOccurs: element['@_maxOccurs'],
+      maxOccurs: element['@_maxOccurs']
     };
 
+    // Обработка аннотации
     if (element['xs:annotation']) {
-      processedElement.annotation = this.processAnnotation(
-        element['xs:annotation']
-      );
+      processedElement.annotation = this.processAnnotation(element['xs:annotation']);
     }
 
+    // Обработка complexType внутри элемента
     if (element['xs:complexType']) {
-      processedElement.complexType = this.processComplexType(
-        element['xs:complexType']
-      );
+      processedElement.complexType = this.processComplexType(element['xs:complexType']);
     }
 
+    // Обработка simpleType внутри элемента
     if (element['xs:simpleType']) {
-      processedElement.simpleType = this.processSimpleType(
-        element['xs:simpleType']
-      );
+      processedElement.simpleType = this.processSimpleType(element['xs:simpleType']);
     }
 
     return processedElement;
   }
 
-  private processComplexType(complexType: any): XSDComplexType {
-    const processedComplexType: XSDComplexType = {
-      name: complexType['@_name'],
+  private processComplexType(complexType: any): any {
+    const processedComplexType: any = {
+      name: complexType['@_name']
     };
 
+    // Обработка аннотации
     if (complexType['xs:annotation']) {
-      processedComplexType.annotation = this.processAnnotation(
-        complexType['xs:annotation']
-      );
+      processedComplexType.annotation = this.processAnnotation(complexType['xs:annotation']);
     }
 
+    // Обработка sequence как объекта
     if (complexType['xs:sequence']) {
-      processedComplexType.sequence = this.processSequence(
-        complexType['xs:sequence']
-      );
+      processedComplexType.sequence = this.processSequence(complexType['xs:sequence']);
     }
 
+    // Обработка all как объекта
     if (complexType['xs:all']) {
       processedComplexType.all = this.processAll(complexType['xs:all']);
     }
 
+    // Обработка choice
     if (complexType['xs:choice']) {
-      processedComplexType.choice = this.processChoice(
-        complexType['xs:choice']
-      );
+      processedComplexType.choice = this.processChoice(complexType['xs:choice']);
     }
 
+    // Обработка attributes как объекта
     if (complexType['xs:attribute']) {
-      const attributes = Array.isArray(complexType['xs:attribute'])
-        ? complexType['xs:attribute']
+      const attributes = Array.isArray(complexType['xs:attribute']) 
+        ? complexType['xs:attribute'] 
         : [complexType['xs:attribute']];
+      
+      processedComplexType.attributes = this.arrayToObject(attributes, 'name');
+    }
 
-      processedComplexType.attributes = attributes.map((attr: any) =>
-        this.processAttribute(attr)
-      );
+    // Обработка complexContent
+    if (complexType['xs:complexContent']) {
+      processedComplexType.complexContent = this.processComplexContent(complexType['xs:complexContent']);
     }
 
     return processedComplexType;
   }
 
-  private processSimpleType(simpleType: any): XSDSimpleType {
-    const processedSimpleType: XSDSimpleType = {
-      name: simpleType['@_name'],
-      restriction: {
-        base: '',
-        enumerations: undefined,
-        pattern: undefined
-      }
+  private processSimpleType(simpleType: any): any {
+    const processedSimpleType: any = {
+      name: simpleType['@_name']
     };
 
     if (simpleType['xs:restriction']) {
       const restriction = simpleType['xs:restriction'];
       processedSimpleType.restriction = {
-        base: restriction['@_base'],
+        base: restriction['@_base']
       };
 
+      // Обработка перечислений
       if (restriction['xs:enumeration']) {
-        const enumerations = Array.isArray(restriction['xs:enumeration'])
-          ? restriction['xs:enumeration']
+        const enumerations = Array.isArray(restriction['xs:enumeration']) 
+          ? restriction['xs:enumeration'] 
           : [restriction['xs:enumeration']];
-
-        processedSimpleType.restriction.enumerations = enumerations.map(
-          (enumItem: any) => this.processEnumeration(enumItem)
+        
+        processedSimpleType.restriction.enumerations = enumerations.map((enumItem: any) => 
+          this.processEnumeration(enumItem)
         );
       }
 
+      // Обработка паттерна
       if (restriction['xs:pattern']) {
-        processedSimpleType.restriction.pattern =
-          restriction['xs:pattern']['@_value'];
+        processedSimpleType.restriction.pattern = restriction['xs:pattern']['@_value'];
       }
     }
 
@@ -206,51 +273,48 @@ class XSDParser {
 
   private processEnumeration(enumItem: any): XSDEnumeration {
     const enumeration: XSDEnumeration = {
-      value: enumItem['@_value'],
+      value: enumItem['@_value']
     };
 
+    // Обработка аннотации для перечисления
     if (enumItem['xs:annotation']) {
-      enumeration.annotation = this.processAnnotation(
-        enumItem['xs:annotation']
-      );
+      enumeration.annotation = this.processAnnotation(enumItem['xs:annotation']);
     }
 
     return enumeration;
   }
 
-  private processSequence(sequence: any): XSDElement[] {
-    if (!sequence['xs:element']) return [];
-
-    const elements = Array.isArray(sequence['xs:element'])
-      ? sequence['xs:element']
+  private processSequence(sequence: any): { [key: string]: XSDElement } {
+    if (!sequence['xs:element']) return {};
+    
+    const elements = Array.isArray(sequence['xs:element']) 
+      ? sequence['xs:element'] 
       : [sequence['xs:element']];
-
-    return elements.map((element: any) => this.processElement(element));
+    
+    return this.arrayToObject(elements, 'name');
   }
 
-  private processAll(all: any): XSDElement[] {
-    if (!all['xs:element']) return [];
-
-    const elements = Array.isArray(all['xs:element'])
-      ? all['xs:element']
+  private processAll(all: any): { [key: string]: XSDElement } {
+    if (!all['xs:element']) return {};
+    
+    const elements = Array.isArray(all['xs:element']) 
+      ? all['xs:element'] 
       : [all['xs:element']];
-
-    return elements.map((element: any) => this.processElement(element));
+    
+    return this.arrayToObject(elements, 'name');
   }
 
-  private processChoice(choice: any): XSDChoice {
-    const processedChoice: XSDChoice = {
-      elements: [],
+  private processChoice(choice: any): any {
+    const processedChoice: any = {
+      elements: {}
     };
 
     if (choice['xs:element']) {
-      const elements = Array.isArray(choice['xs:element'])
-        ? choice['xs:element']
+      const elements = Array.isArray(choice['xs:element']) 
+        ? choice['xs:element'] 
         : [choice['xs:element']];
-
-      processedChoice.elements = elements.map((element: any) =>
-        this.processElement(element)
-      );
+      
+      processedChoice.elements = this.arrayToObject(elements, 'name');
     }
 
     return processedChoice;
@@ -260,40 +324,63 @@ class XSDParser {
     const processedAttribute: any = {
       name: attribute['@_name'],
       type: attribute['@_type'],
-      use: attribute['@_use'],
+      use: attribute['@_use']
     };
 
+    // Обработка аннотации
     if (attribute['xs:annotation']) {
-      processedAttribute.annotation = this.processAnnotation(
-        attribute['xs:annotation']
-      );
+      processedAttribute.annotation = this.processAnnotation(attribute['xs:annotation']);
     }
 
+    // Обработка simpleType внутри атрибута
     if (attribute['xs:simpleType']) {
-      processedAttribute.simpleType = this.processSimpleType(
-        attribute['xs:simpleType']
-      );
+      processedAttribute.simpleType = this.processSimpleType(attribute['xs:simpleType']);
     }
 
     return processedAttribute;
   }
 
+  private processComplexContent(complexContent: any): any {
+    if (complexContent['xs:extension']) {
+      const extension = complexContent['xs:extension'];
+      const processedExtension: any = {
+        base: extension['@_base']
+      };
+
+      // Обработка атрибутов в extension
+      if (extension['xs:attribute']) {
+        const attributes = Array.isArray(extension['xs:attribute']) 
+          ? extension['xs:attribute'] 
+          : [extension['xs:attribute']];
+        
+        processedExtension.attributes = this.arrayToObject(attributes, 'name');
+      }
+
+      return {
+        extension: processedExtension
+      };
+    }
+
+    return {};
+  }
+
   private processAnnotation(annotation: any): XSDAnnotation {
     const processedAnnotation: XSDAnnotation = {
-      documentation: '',
+      documentation: ''
     };
 
     if (annotation['xs:documentation']) {
       const documentation = annotation['xs:documentation'];
-
+      
+      // Обработка текста документации
       if (typeof documentation === 'string') {
         processedAnnotation.documentation = documentation;
       } else if (documentation['#text']) {
         processedAnnotation.documentation = documentation['#text'];
       } else if (typeof documentation === 'object') {
-        processedAnnotation.documentation =
-          documentation['#text'] ||
-          documentation['@_text'] ||
+        processedAnnotation.documentation = 
+          documentation['#text'] || 
+          documentation['@_text'] || 
           JSON.stringify(documentation);
       }
     }
@@ -302,4 +389,83 @@ class XSDParser {
   }
 }
 
-export { XSDParser };
+// Упрощенная версия для быстрого использования с полным извлечением документации
+function parseXSDWithDocumentation(xsdContent: string): any {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@_",
+    textNodeName: "#text",
+    allowBooleanAttributes: true,
+    parseAttributeValue: true,
+    trimValues: true,
+    alwaysCreateTextNode: true,
+    preserveOrder: false,
+    processEntities: true,
+    htmlEntities: true,
+    isArray: (name, jpath, isLeafNode, isAttribute) => {
+      const arrayElements = [
+        'xs:element', 'xs:complexType', 'xs:simpleType', 
+        'xs:attribute', 'xs:enumeration', 'xs:sequence',
+        'xs:choice', 'xs:all'
+      ];
+      return arrayElements.includes(name);
+    }
+  });
+
+  const result = parser.parse(xsdContent);
+  
+  // Дополнительная обработка для извлечения документации
+  return extractDocumentationRecursively(result);
+}
+
+// Рекурсивная функция для извлечения документации из всей структуры
+function extractDocumentationRecursively(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(item => extractDocumentationRecursively(item));
+  } else if (obj && typeof obj === 'object') {
+    const result: any = {};
+    
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === 'xs:annotation' && value && typeof value === 'object') {
+        result.annotation = extractDocumentation(value);
+      } else if (key === 'xs:documentation') {
+        result.documentation = extractDocumentationText(value);
+      } else {
+        result[key] = extractDocumentationRecursively(value);
+      }
+    }
+    
+    return result;
+  }
+  
+  return obj;
+}
+
+function extractDocumentation(annotation: any): string {
+  if (!annotation) return '';
+  
+  if (annotation['xs:documentation']) {
+    return extractDocumentationText(annotation['xs:documentation']);
+  }
+  
+  return '';
+}
+
+function extractDocumentationText(doc: any): string {
+  if (typeof doc === 'string') {
+    return doc;
+  } else if (doc && doc['#text']) {
+    return doc['#text'];
+  } else if (doc && typeof doc === 'object') {
+    return doc['#text'] || doc['@_text'] || doc.text || JSON.stringify(doc);
+  }
+  
+  return '';
+}
+
+// Экспорт всех функций и классов
+export { 
+  XSDParser, 
+  parseXSDWithDocumentation, 
+  extractDocumentationRecursively 
+};

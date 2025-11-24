@@ -1,179 +1,228 @@
-import * as xmlbuilder from 'xmlbuilder';
+import * as builder from 'xmlbuilder';
 
-import type { XSDSchema } from '../types';
+interface XSDElement {
+  name: string;
+  type?: string;
+  value?: any;
+  complexType?: {
+    sequence?: { [key: string]: XSDElement };
+    all?: { [key: string]: XSDElement };
+    choice?: {
+      elements: { [key: string]: XSDElement };
+    };
+    attributes?: { [key: string]: any };
+  };
+  simpleType?: any;
+}
 
-export class XMLGenerator {
-  static generateXML(
-    formData: Record<string, any>,
-    schema: XSDSchema | null,
-    rootElementName: string = 'Requirement'
-  ): string {
-    const xml = xmlbuilder.create(rootElementName, {
+interface XSDSchema {
+  elements: { [key: string]: XSDElement };
+}
+
+// Основная функция генерации XML
+export function generateXMLFromSchema(schema: XSDSchema): string {
+  if (!schema.elements || Object.keys(schema.elements).length === 0) {
+    throw new Error('No elements found in schema');
+  }
+
+  // Предполагаем, что корневой элемент - первый в объекте
+  const rootElementKey = Object.keys(schema.elements)[0];
+  const rootElement = schema.elements[rootElementKey as string];
+
+  if (!rootElement) {
+    throw new Error('Root element is undefined');
+  }
+
+  // Создаем корневой элемент XML
+  const xml = builder.create(rootElement.name, {
+    version: '1.0',
+    encoding: 'UTF-8',
+  });
+
+  // Рекурсивно добавляем дочерние элементы
+  processElement(xml, rootElement);
+
+  return xml.end({ pretty: true, indent: '  ', newline: '\n' });
+}
+
+// Рекурсивная обработка элемента
+function processElement(parent: any, element: XSDElement): void {
+  // Если элемент имеет значение, добавляем его как текстовый узел
+  if (
+    element.value !== undefined &&
+    element.value !== null &&
+    element.value !== ''
+  ) {
+    parent.txt(element.value.toString());
+    return;
+  }
+
+  // Обработка complexType с sequence
+  if (element.complexType?.sequence) {
+    for (const [_key, childElement] of Object.entries(element.complexType.sequence)) {
+      if (childElement && childElement.name) {
+        const childNode = parent.ele(childElement.name);
+        processElement(childNode, childElement);
+      }
+    }
+    return;
+  }
+
+  // Обработка complexType с all
+  if (element.complexType?.all) {
+    for (const [key, childElement] of Object.entries(element.complexType.all)) {
+      if (childElement && childElement.name) {
+        const childNode = parent.ele(childElement.name);
+        processElement(childNode, childElement);
+      }
+    }
+    return;
+  }
+
+  // Обработка complexType с choice (берем первый элемент)
+  if (
+    element.complexType?.choice?.elements &&
+    Object.keys(element.complexType.choice.elements).length > 0
+  ) {
+    const firstChoiceKey = Object.keys(element.complexType.choice.elements)[0];
+    const firstChoiceElement = element.complexType.choice.elements[firstChoiceKey as string];
+    if (firstChoiceElement && firstChoiceElement.name) {
+      const choiceNode = parent.ele(firstChoiceElement.name);
+      processElement(choiceNode, firstChoiceElement);
+    }
+    return;
+  }
+
+  // Если это простой элемент без детей, но без значения, добавляем пустой элемент
+  if (!element.complexType && element.value === undefined) {
+    parent.txt('');
+  }
+}
+
+// Альтернативная функция с дополнительной валидацией
+export function generateXMLWithValidation(schema: XSDSchema): string {
+  // Проверяем наличие элементов
+  if (
+    !schema?.elements ||
+    Object.keys(schema.elements).length === 0
+  ) {
+    throw new Error('Invalid schema: no elements found');
+  }
+
+  const rootElementKey = Object.keys(schema.elements)[0];
+  const rootElement = schema.elements[rootElementKey as string];
+
+  // Проверяем корневой элемент
+  if (
+    !rootElement ||
+    !rootElement.name ||
+    typeof rootElement.name !== 'string'
+  ) {
+    throw new Error('Invalid root element: name is required');
+  }
+
+  try {
+    const xml = builder.create(rootElement.name, {
       version: '1.0',
       encoding: 'UTF-8',
     });
 
-    this.buildXML(xml, formData, schema);
+    // Обрабатываем корневой элемент и все его дочерние элементы
+    processRootElement(xml, rootElement);
 
-    return xml.end({ pretty: true });
+    return xml.end({ pretty: true, indent: '  ', newline: '\n' });
+  } catch (error) {
+    throw new Error(`XML generation failed: ${(error as Error).message}`);
+  }
+}
+
+// Обработка корневого элемента и его структуры
+function processRootElement(parent: any, rootElement: XSDElement): void {
+  if (!rootElement.complexType?.sequence) {
+    return;
   }
 
-  private static buildXML(
-    xml: any,
-    data: Record<string, any>,
-    schema: XSDSchema | null,
-    parentElementName: string = ''
-  ): void {
-    for (const [key, value] of Object.entries(data)) {
-      // Пропускаем пустые значения
-      if (this.isEmptyValue(value)) {
-        continue;
-      }
+  // Обрабатываем все дочерние элементы корневого элемента
+  for (const [key, childElement] of Object.entries(rootElement.complexType.sequence)) {
+    if (childElement?.name) {
+      processElementWithValidation(parent, childElement);
+    }
+  }
+}
 
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
-        // Вложенный объект - создаем элемент и рекурсивно обрабатываем
-        const child = xml.ele(key);
+// Безопасная обработка элемента с валидацией
+function processElementWithValidation(parent: any, element: XSDElement): void {
+  if (!element || !element.name) return;
 
-        // Добавляем атрибуты если есть в схеме
-        this.addAttributes(child, key, schema, parentElementName);
+  // Создаем текущий элемент
+  const currentNode = parent.ele(element.name);
 
-        this.buildXML(child, value, schema, key);
-      } else if (Array.isArray(value)) {
-        // Массив - создаем элементы для каждого непустого значения
-        value.forEach((item) => {
-          if (!this.isEmptyValue(item)) {
-            if (typeof item === 'object') {
-              const child = xml.ele(key);
-              this.addAttributes(child, key, schema, parentElementName);
-              this.buildXML(child, item, schema, key);
-            } else {
-              const child = xml.ele(key, item.toString());
-              this.addAttributes(child, key, schema, parentElementName);
-            }
-          }
-        });
-      } else {
-        // Простое значение - создаем элемент с текстом
-        const child = xml.ele(key, value.toString());
-        this.addAttributes(child, key, schema, parentElementName);
+  // Добавляем текстовое значение
+  if (
+    element.value !== undefined &&
+    element.value !== null &&
+    element.value !== ''
+  ) {
+    currentNode.txt(String(element.value));
+  }
+
+  // Обработка атрибутов
+  if (element.complexType?.attributes) {
+    for (const [_attrKey, attribute] of Object.entries(element.complexType.attributes)) {
+      if (
+        attribute.name &&
+        attribute.value !== undefined &&
+        attribute.value !== null &&
+        attribute.value !== ''
+      ) {
+        currentNode.att(attribute.name, String(attribute.value));
       }
     }
   }
 
-  private static addAttributes(
-    xmlElement: any,
-    elementName: string,
-    schema: XSDSchema | null,
-    parentElementName: string = ''
-  ): void {
-    if (!schema) return;
-
-    // Ищем элемент в схеме
-    const element = this.findElementInSchema(
-      elementName,
-      parentElementName,
-      schema
-    );
-    if (!element || !element.complexType?.attributes) return;
-
-    // Добавляем атрибуты из схемы
-    element.complexType.attributes.forEach((attr: { use: string; name: any; }) => {
-      // Для обязательных атрибутов добавляем значения по умолчанию
-      if (attr.use === 'required') {
-        const defaultValue = this.getDefaultAttributeValue(attr);
-        if (defaultValue !== null) {
-          xmlElement.att(attr.name, defaultValue);
-        }
-      }
-      // Для необязательных атрибутов можно добавить логику если нужно
-    });
-  }
-
-  private static findElementInSchema(
-    elementName: string,
-    parentElementName: string,
-    schema: XSDSchema
-  ): any {
-    // Сначала ищем в корневых элементах
-    let element = schema.elements.find((el) => el.name === elementName);
-    if (element) return element;
-
-    // Ищем во вложенных complexType
-    if (parentElementName) {
-      const parentElement = schema.elements.find(
-        (el) => el.name === parentElementName
-      );
-      if (parentElement?.complexType?.sequence) {
-        element = parentElement.complexType.sequence.find(
-          (el) => el.name === elementName
-        );
-      }
-      if (parentElement?.complexType?.all) {
-        element = parentElement.complexType.all.find(
-          (el) => el.name === elementName
-        );
-      }
-    }
-
-    // Ищем в complexTypes
-    if (!element) {
-      for (const complexType of schema.complexTypes) {
-        if (complexType.sequence) {
-          element = complexType.sequence.find((el) => el.name === elementName);
-          if (element) break;
-        }
-        if (complexType.all) {
-          element = complexType.all.find((el) => el.name === elementName);
-          if (element) break;
-        }
-      }
-    }
-
-    return element;
-  }
-
-  private static getDefaultAttributeValue(attribute: any): string | null | undefined {
-    if (attribute.simpleType?.restriction?.enumerations) {
-      return attribute.simpleType.restriction.enumerations[0]?.value || null;
-    }
-
-    switch (attribute.type) {
-      case 'xs:string':
-        return '';
-      case 'xs:integer':
-      case 'xs:decimal':
-        return '0';
-      case 'xs:boolean':
-        return 'false';
-      case 'xs:date':
-        return new Date().toISOString().split('T')[0];
-      default:
-        return null;
+  // Рекурсивная обработка дочерних элементов
+  if (element.complexType?.sequence) {
+    for (const [_childKey, child] of Object.entries(element.complexType.sequence)) {
+      processElementWithValidation(currentNode, child);
     }
   }
 
-  private static isEmptyValue(value: any): boolean {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string' && value.trim() === '') return true;
-    if (typeof value === 'number' && isNaN(value)) return true;
-    if (Array.isArray(value) && value.length === 0) return true;
-    if (typeof value === 'object' && Object.keys(value).length === 0)
-      return true;
-    return false;
+  if (element.complexType?.all) {
+    for (const [_childKey, child] of Object.entries(element.complexType.all)) {
+      processElementWithValidation(currentNode, child);
+    }
   }
 
-  static downloadXML(
-    xmlContent: string,
-    filename: string = 'generated.xml'
-  ): void {
-    const blob = new Blob([xmlContent], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  if (element.complexType?.choice?.elements) {
+    const firstChoiceKey = Object.keys(element.complexType.choice.elements)[0];
+    const firstChoice = element.complexType.choice.elements[firstChoiceKey as string];
+    if (firstChoice) {
+      processElementWithValidation(currentNode, firstChoice);
+    }
   }
+}
+
+// Функция для получения информации о схеме (для отладки)
+export function getSchemaInfo(schema: XSDSchema): {
+  elementCount: number;
+  rootElementName?: string;
+  hasComplexTypes: boolean;
+} {
+  if (!schema?.elements) {
+    return { elementCount: 0, hasComplexTypes: false };
+  }
+
+  const rootElementKey = Object.keys(schema.elements)[0];
+  const rootElement = schema.elements[rootElementKey as string];
+  
+  const hasComplexTypes = Object.values(schema.elements).some(
+    (el) =>
+      el.complexType?.sequence || el.complexType?.all || el.complexType?.choice
+  );
+
+  return {
+    elementCount: Object.keys(schema.elements).length,
+    rootElementName: rootElement?.name,
+    hasComplexTypes,
+  };
 }

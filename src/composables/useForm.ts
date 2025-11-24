@@ -12,8 +12,7 @@ interface XSDSchema {
 }
 
 export function useForm() {
-  
-    // Реактивные данные
+// Реактивные данные
 const schema = reactive<XSDSchema>({
   elements: {},
   complexTypes: {},
@@ -24,7 +23,32 @@ const generatedXML = ref<string>('');
 
 // Хранилище значений элементов
 const elementValues = reactive<{ [path: string]: any }>({});
-    // Парсинг XSD
+
+// Функция чтения файла
+const readFileContent = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) =>
+      resolve((e.target?.result as string) || '');
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
+};
+
+// Обработка загрузки файла
+const handleFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (file) {
+    try {
+      const content = await readFileContent(file);
+      parseXSD(content);
+    } catch (error) {
+      console.error('Error reading file:', error);
+    }
+  }
+};
+
+// Парсинг XSD
 const parseXSD = (xsdContent: string): void => {
   const parser = new XSDParser();
   const parsedSchema = parser.parseXSDToJSON(xsdContent);
@@ -68,6 +92,17 @@ const initializeElementValues = (
       initializeElementValues(element.complexType.choice.elements, currentPath);
     }
   });
+};
+
+// Обновление значения элемента
+const updateElementValue = (elementPath: string, value: any) => {
+  console.log('Updating element value:', elementPath, value);
+
+  // Сохраняем значение в хранилище
+  elementValues[elementPath] = value;
+
+  // Также обновляем значение в самом элементе schema
+  updateSchemaElementValue(schema.elements, elementPath, value);
 };
 
 // Рекурсивное обновление значения в структуре schema
@@ -115,20 +150,7 @@ const updateSchemaElementValue = (
   return false;
 };
 
-// Обновление значения элемента
-const updateElementValue = (elementPath: string, value: any) => {
-  console.log('Updating element value:', elementPath, value);
-
-  // Сохраняем значение в хранилище
-  elementValues[elementPath] = value;
-
-  // Также обновляем значение в самом элементе schema
-  updateSchemaElementValue(schema.elements, elementPath, value);
-};
-
-
-
-// Обновляем функцию handleAddItem
+// Добавление нового Entity, Relation или Property
 const handleAddItem = async (
   elementPath: string,
   itemType: 'Entity' | 'Relation' | 'Property'
@@ -140,25 +162,30 @@ const handleAddItem = async (
   const targetElement = findElementByPath(schema.elements, elementPath);
 
   if (targetElement && targetElement.complexType?.sequence) {
+    console.log('Found target element:', targetElement);
 
     // Используем первый элемент как шаблон
-    const templateKey = Object.keys(targetElement.complexType.sequence)[0];
-    const templateElement = targetElement.complexType.sequence[templateKey as string];
+    const templateKey = Object.keys(targetElement.complexType.sequence)[0] as string;
+    const templateElement = targetElement.complexType.sequence[templateKey];
 
     if (templateElement && templateElement.name === itemType) {
+      console.log('Found template element:', templateElement);
 
       const newItem = deepCopyElement(templateElement);
       clearElementValues(newItem);
       generateUniqueIds(newItem, itemType);
 
       // Генерируем уникальный ключ для нового элемента
-      const newKey = `${itemType.toLowerCase()}_${Date.now()}`;
+      const newKey = `${itemType}_${Date.now()}`;
       
       // Добавляем новый элемент в sequence
       targetElement.complexType.sequence[newKey] = newItem;
 
       // Инициализируем значения для нового элемента
       initializeElementValues({ [newKey]: newItem }, elementPath);
+
+      console.log(`Added new ${itemType}:`, newItem);
+      console.log('Current sequence:', targetElement.complexType.sequence);
     } else {
       console.error(
         `Template element ${itemType} not found in sequence:`,
@@ -333,6 +360,6 @@ const syncValuesToSchema = () => {
 };
 
   return {
-    schema, generateXML, updateElementValue, handleAddItem, parseXSD
+    schema, generatedXML, generateXML, handleFileUpload, updateElementValue, handleAddItem
   };
 }

@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-full mx-auto">
     <!-- Контрол загрузки файла -->
-    <div class="w-full mb-6">
+    <div class="flex gap-4 items-center w-full mb-6">
       <input
         type="file"
         @change="handleFileUpload"
@@ -11,10 +11,14 @@
     </div>
 
     <!-- Форма элементов -->
-    <div v-if="Object.keys(schema.elements).length > 0" class="xsd-form">
-      <form @submit.prevent="generateXML">
+    <div v-if="Object.keys(schema.elements).length > 0">
+      <form @submit.prevent.stop>
         <!-- Рендеринг элементов -->
-        <div v-for="(element, key) in schema.elements" :key="key" class="mb-6">
+        <div
+          v-for="(element, key) in schema.elements"
+          :key="key"
+          class="mb-6"
+        >
           <XSDGroup
             :element="element"
             :level="0"
@@ -26,8 +30,9 @@
         <!-- Кнопка генерации XML -->
         <div class="mt-8 pt-4 border-t">
           <button
-            type="submit"
+            
             class="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+            @click="generateXML"
           >
             Сгенерировать XML
           </button>
@@ -36,7 +41,7 @@
     </div>
 
     <!-- Результат XML -->
-    <div v-if="generatedXML" class="xml-result mt-6">
+    <div v-if="generatedXML" class="bg-white rounded p-4 border mt-6">
       <h3 class="text-lg font-semibold mb-2">Сгенерированный XML:</h3>
       <pre
         class="bg-gray-100 p-4 rounded border overflow-auto"
@@ -46,17 +51,11 @@
 </template>
 
 <script setup lang="ts">
-import { useForm } from "../composables/useForm";
-import XSDGroup from "./XSDGroup.vue";
+import { useForm } from '../composables/useForm';
+import XSDGroup from './XSDGroup.vue';
 
-const {
-  schema,
-  generatedXML,
-  generateXML,
-  handleFileUpload,
-  updateElementValue,
-  handleAddItem,
-} = useForm();
+const { schema, generatedXML, generateXML, handleFileUpload, updateElementValue, handleAddItem } = useForm();
 </script>
 
-<style scoped></style>
+<style scoped>
+</style>

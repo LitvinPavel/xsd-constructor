@@ -1,57 +1,71 @@
 <template>
-  <div class="xsd-group" :class="`level-${level}`">
+  <div class="mb-4" :class="level === 0 ? 'border border-gray-200 rounded-lg p-4' : `ml-${level * 2} pl-4 border-l-2 border-gray-300`">
     <!-- Группа для complexType с sequence -->
     <div
       v-if="
         !element.type &&
         (element.complexType?.sequence || element.complexType?.all)
       "
-      class="complex-group"
+      class="w-full"
     >
-      <div class="group-header">
-        <h3 class="group-title">{{ element.name }}</h3>
-        <p v-if="element.annotation?.documentation" class="group-description">
-          {{ element.annotation.documentation }}
-        </p>
+      <div class="mb-4 pb-2 flex justify-between items-start flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+          <button
+            @click="toggleExpanded"
+            class="flex items-center justify-center w-6 h-6 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <svg
+              v-if="isExpanded"
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            <svg
+              v-else
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          
+          <h3 v-if="element.annotation?.documentation" class="text-lg font-semibold text-gray-800 m-0">
+            {{ element.annotation.documentation }}
+          </h3>
+        </div>
 
         <!-- Кнопка добавления для Entities, Relations и Properties -->
         <button
           v-if="isCollectionElement(element.name)"
           @click="handleAddItem"
-          class="add-item-btn"
+          class="bg-green-500 text-white border-none py-2 px-4 rounded cursor-pointer text-sm transition-colors hover:bg-green-600 whitespace-nowrap"
           type="button"
         >
           + Добавить {{ getItemTypeDisplayName(element.name) }}
         </button>
       </div>
 
-      <div class="group-content">
+      <div v-show="isExpanded">
         <!-- Рендеринг элементов из sequence -->
         <template v-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
             :key="String(key)"
-            class="child-element"
-            :class="{ 'dynamic-item': isDynamicItem(element.name, String(key)) }"
+            class="mb-4"
+            :class="{
+              'border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 bg-gray-50': isTemplateItem(element.name, String(key))
+            }"
           >
-            <div class="item-header">
-              <h4 class="item-title">
-                {{ getItemDisplayName(item.name, String(key)) }}
-                <span
-                  v-if="isTemplateItem(element.name, String(key))"
-                  class="template-badge"
-                  >(из схемы)</span
-                >
-                <span
-                  v-else-if="isDynamicItem(element.name, String(key))"
-                  class="dynamic-badge"
-                  >(добавлен)</span
-                >
-              </h4>
+            <div class="flex justify-end">
               <button
                 v-if="canRemoveItem(element.name, String(key))"
                 @click="removeItem(String(key))"
-                class="remove-item-btn"
+                class="bg-red-500 text-white border-none py-1 px-2 rounded cursor-pointer text-sm hover:bg-red-600"
                 type="button"
               >
                 × Удалить
@@ -70,12 +84,11 @@
     </div>
 
     <!-- Простой элемент с типом -->
-    <div v-else class="simple-element">
-      <label class="element-label">
-        <span class="label-text">{{ element.name }}</span>
+    <div v-else class="mb-3">
+      <label class="flex flex-col gap-1">
         <span
           v-if="element.annotation?.documentation"
-          class="label-description"
+          class="text-xs text-gray-500 italic"
         >
           {{ element.annotation.documentation }}
         </span>
@@ -83,8 +96,11 @@
           :type="getInputType(element.type)"
           :value="getElementValue()"
           @input="handleInputChange($event)"
-          class="element-input"
+          class="py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
           :placeholder="`Введите значение для ${element.name}`"
+          :class="{
+            'w-auto mr-2': getInputType(element.type) === 'checkbox'
+          }"
         />
       </label>
     </div>
@@ -92,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 interface Props {
   element: any;
@@ -108,10 +124,17 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+const isExpanded = ref(true);
+
 // Вычисляемый путь к элементу
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
 });
+
+// Переключение состояния раскрытия/скрытия
+const toggleExpanded = () => {
+  isExpanded.value = !isExpanded.value;
+};
 
 // Получение типа элемента на основе имени
 const getItemType = (): 'Entity' | 'Relation' | 'Property' => {
@@ -200,22 +223,6 @@ const handleChildAddItem = async (path: string, itemType: 'Entity' | 'Relation' 
   emit('add-item', path, itemType);
 };
 
-// Получение отображаемого имени элемента
-const getItemDisplayName = (itemName: string, key: string): string => {
-  const elementName = props.element.name;
-  
-  if (elementName === 'Entities' && itemName === 'Entity') {
-    return `Entity ${getItemIndex(key) + 1}`;
-  }
-  if (elementName === 'Relations' && itemName === 'Relation') {
-    return `Relation ${getItemIndex(key) + 1}`;
-  }
-  if (elementName === 'Properties' && itemName === 'Property') {
-    return `Property ${getItemIndex(key) + 1}`;
-  }
-  return itemName;
-};
-
 // Получение индекса элемента по ключу
 const getItemIndex = (key: string): number => {
   if (!props.element.complexType?.sequence) return 0;
@@ -226,38 +233,21 @@ const getItemIndex = (key: string): number => {
 
 // Проверка, является ли элемент шаблонным (первым в списке)
 const isTemplateItem = (elementName: string, key: string): boolean => {
-  const index = getItemIndex(key);
-  const templateKeys: { [key: string]: string[] } = {
-    'Entities': ['Entity'],
-    'Relations': ['Relation'],
-    'Properties': ['Property']
+  const templateKeys: { [key: string]: string } = {
+    'Entities': 'Entity',
+    'Relations': 'Relation',
+    'Properties': 'Property'
   };
-  
-  return index === 0 && 
-         templateKeys[elementName]?.includes(key) === true;
-};
-
-// Проверка, является ли элемент динамическим (добавленным)
-const isDynamicItem = (elementName: string, key: string): boolean => {
-  const index = getItemIndex(key);
-  const prefixMap: { [key: string]: string } = {
-    'Entities': 'entity_',
-    'Relations': 'relation_',
-    'Properties': 'property_'
-  };
-  
-  return !!(index > 0 && 
-         prefixMap[elementName] &&
-         key.startsWith(prefixMap[elementName]));
+  return key.startsWith(templateKeys[elementName] as string);
 };
 
 // Проверка, можно ли удалить элемент
 const canRemoveItem = (elementName: string, key: string): boolean => {
   const index = getItemIndex(key);
   const prefixMap: { [key: string]: string } = {
-    'Entities': 'entity_',
-    'Relations': 'relation_',
-    'Properties': 'property_'
+    'Entities': 'Entity_',
+    'Relations': 'Relation_',
+    'Properties': 'Property_'
   };
   
   return !!(index > 0 &&
@@ -268,9 +258,9 @@ const canRemoveItem = (elementName: string, key: string): boolean => {
 // Удаление элемента
 const removeItem = (key: string) => {
   const prefixMap: { [key: string]: string } = {
-    'Entities': 'entity_',
-    'Relations': 'relation_',
-    'Properties': 'property_'
+    'Entities': 'Entity_',
+    'Relations': 'Relation_',
+    'Properties': 'Property_'
   };
   
   const prefix = prefixMap[props.element.name];
@@ -283,167 +273,3 @@ const removeItem = (key: string) => {
   }
 };
 </script>
-
-<style scoped>
-.xsd-group {
-  margin-bottom: 1rem;
-}
-
-.level-0 {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-}
-
-.level-1 {
-  margin-left: 1rem;
-  padding-left: 1rem;
-  border-left: 2px solid #d1d5db;
-}
-
-.complex-group {
-  width: 100%;
-}
-
-.group-header {
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #f3f4f6;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.group-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-.group-description {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
-  font-style: italic;
-  flex-basis: 100%;
-}
-
-.dynamic-item {
-  border: 2px dashed #d1d5db;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  background: #f9fafb;
-}
-
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.item-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #374151;
-  margin: 0;
-}
-
-.template-badge, .dynamic-badge {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.375rem;
-  border-radius: 0.25rem;
-  margin-left: 0.5rem;
-}
-
-.template-badge {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.dynamic-badge {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.remove-item-btn {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-
-.remove-item-btn:hover {
-  background: #dc2626;
-}
-
-.add-item-btn {
-  background: #10b981;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-}
-
-.add-item-btn:hover {
-  background: #059669;
-}
-
-.group-content {
-}
-
-.simple-element {
-  margin-bottom: 0.75rem;
-}
-
-.element-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.label-text {
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.875rem;
-}
-
-.label-description {
-  font-size: 0.75rem;
-  color: #6b7280;
-  font-style: italic;
-}
-
-.element-input {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-}
-
-.element-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  ring: 2px;
-  ring-color: #3b82f6;
-}
-
-.element-input[type='checkbox'] {
-  width: auto;
-  margin-right: 0.5rem;
-}
-</style>

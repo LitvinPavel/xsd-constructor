@@ -39,6 +39,12 @@ import { ref, computed, inject } from 'vue';
 import ComplexTypeForm from './ComplexTypeForm.vue';
 import type { ComplexTypeInstance, ComplexTypesStore } from '../composables/useComplexTypes';
 
+interface XSDSchema {
+  elements: { [key: string]: any };
+  complexTypes: { [key: string]: any };
+  simpleTypes: { [key: string]: any };
+}
+
 interface Props {
   typeName: string;
 }
@@ -49,7 +55,7 @@ const emit = defineEmits<{
   (e: 'type-selected', instance: ComplexTypeInstance): void;
 }>();
 
-const schema = inject('schema', {});
+const schema: XSDSchema | undefined = inject('schema');
 const complexTypesStore: ComplexTypesStore | undefined = inject('complexTypesStore');
 
 const selectedInstanceId = ref('');

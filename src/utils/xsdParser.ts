@@ -112,6 +112,163 @@ class XSDParser {
     }
   }
 
+  // Метод для получения определений сложных типов в структурированном виде
+public getComplexTypeDefinitions(parsedData: any): { [key: string]: any } {
+  const schema = parsedData['xs:schema'];
+  const definitions: { [key: string]: any } = {};
+
+  if (schema['xs:complexType']) {
+    const complexTypes = Array.isArray(schema['xs:complexType']) 
+      ? schema['xs:complexType'] 
+      : [schema['xs:complexType']];
+    
+    complexTypes.forEach((complexType: any) => {
+      const name = complexType['@_name'];
+      if (name) {
+        definitions[name] = this.extractComplexTypeStructure(complexType);
+      }
+    });
+  }
+
+  return definitions;
+}
+
+// Извлечение структуры complexType
+private extractComplexTypeStructure(complexType: any): any {
+  const structure: any = {
+    name: complexType['@_name'],
+    annotation: complexType['xs:annotation'] ? this.processAnnotation(complexType['xs:annotation']) : undefined,
+    sequence: {},
+    all: {},
+    attributes: {},
+    choice: undefined
+  };
+
+  // Обработка sequence
+  if (complexType['xs:sequence']?.['xs:element']) {
+    const elements = Array.isArray(complexType['xs:sequence']['xs:element']) 
+      ? complexType['xs:sequence']['xs:element'] 
+      : [complexType['xs:sequence']['xs:element']];
+    
+    elements.forEach((element: any) => {
+      const elementName = element['@_name'];
+      if (elementName) {
+        structure.sequence[elementName] = this.extractElementStructure(element);
+      }
+    });
+  }
+
+  // Обработка all
+  if (complexType['xs:all']?.['xs:element']) {
+    const elements = Array.isArray(complexType['xs:all']['xs:element']) 
+      ? complexType['xs:all']['xs:element'] 
+      : [complexType['xs:all']['xs:element']];
+    
+    elements.forEach((element: any) => {
+      const elementName = element['@_name'];
+      if (elementName) {
+        structure.all[elementName] = this.extractElementStructure(element);
+      }
+    });
+  }
+
+  // Обработка choice
+  if (complexType['xs:choice']?.['xs:element']) {
+    structure.choice = {
+      elements: {}
+    };
+    
+    const elements = Array.isArray(complexType['xs:choice']['xs:element']) 
+      ? complexType['xs:choice']['xs:element'] 
+      : [complexType['xs:choice']['xs:element']];
+    
+    elements.forEach((element: any) => {
+      const elementName = element['@_name'];
+      if (elementName) {
+        structure.choice.elements[elementName] = this.extractElementStructure(element);
+      }
+    });
+  }
+
+  // Обработка атрибутов
+  if (complexType['xs:attribute']) {
+    const attributes = Array.isArray(complexType['xs:attribute']) 
+      ? complexType['xs:attribute'] 
+      : [complexType['xs:attribute']];
+    
+    attributes.forEach((attribute: any) => {
+      const attrName = attribute['@_name'];
+      if (attrName) {
+        structure.attributes[attrName] = this.extractAttributeStructure(attribute);
+      }
+    });
+  }
+
+  return structure;
+}
+
+// Извлечение структуры элемента
+private extractElementStructure(element: any): any {
+  const elementStruct: any = {
+    name: element['@_name'],
+    type: element['@_type'],
+    minOccurs: element['@_minOccurs'] || '1',
+    maxOccurs: element['@_maxOccurs'] || '1',
+    annotation: element['xs:annotation'] ? this.processAnnotation(element['xs:annotation']) : undefined
+  };
+
+  // Обработка встроенного simpleType
+  if (element['xs:simpleType']?.['xs:restriction']) {
+    const restriction = element['xs:simpleType']['xs:restriction'];
+    elementStruct.simpleType = {
+      restriction: {
+        base: restriction['@_base'],
+        enumerations: restriction['xs:enumeration'] 
+          ? (Array.isArray(restriction['xs:enumeration']) 
+              ? restriction['xs:enumeration'].map((e: any) => this.processEnumeration(e))
+              : [this.processEnumeration(restriction['xs:enumeration'])])
+          : undefined,
+        pattern: restriction['xs:pattern']?.['@_value']
+      }
+    };
+  }
+
+  // Обработка встроенного complexType
+  if (element['xs:complexType']) {
+    elementStruct.complexType = this.extractComplexTypeStructure(element['xs:complexType']);
+  }
+
+  return elementStruct;
+}
+
+// Извлечение структуры атрибута
+private extractAttributeStructure(attribute: any): any {
+  const attrStruct: any = {
+    name: attribute['@_name'],
+    type: attribute['@_type'],
+    use: attribute['@_use'] || 'optional',
+    annotation: attribute['xs:annotation'] ? this.processAnnotation(attribute['xs:annotation']) : undefined
+  };
+
+  // Обработка встроенного simpleType для атрибута
+  if (attribute['xs:simpleType']?.['xs:restriction']) {
+    const restriction = attribute['xs:simpleType']['xs:restriction'];
+    attrStruct.simpleType = {
+      restriction: {
+        base: restriction['@_base'],
+        enumerations: restriction['xs:enumeration'] 
+          ? (Array.isArray(restriction['xs:enumeration']) 
+              ? restriction['xs:enumeration'].map((e: any) => this.processEnumeration(e))
+              : [this.processEnumeration(restriction['xs:enumeration'])])
+          : undefined,
+        pattern: restriction['xs:pattern']?.['@_value']
+      }
+    };
+  }
+
+  return attrStruct;
+}
+
   // Преобразование сырых данных в структурированный JSON
   private transformToStructuredJSON(parsedData: any): any {
     const schema = parsedData['xs:schema'];

@@ -150,32 +150,34 @@ function processRootElement(parent: any, rootElement: XSDElement): void {
   }
 }
 
-// Безопасная обработка элемента с валидацией
 function processElementWithValidation(parent: any, element: XSDElement): void {
   if (!element || !element.name) return;
 
   // Создаем текущий элемент
   const currentNode = parent.ele(element.name);
 
-  // Добавляем текстовое значение
-  if (
+  // Обработка complexType (должна быть ДО обработки текстового значения)
+  if (element.complexType && element.value) {
+    processComplexType(currentNode, element.complexType, element.value);
+  } else if (element.type && isComplexType(element.type) && element.value) {
+    // Если элемент имеет тип complexType и значение
+    processComplexTypeByDefinition(currentNode, element.type, element.value);
+  } else if (
     element.value !== undefined &&
     element.value !== null &&
-    element.value !== ''
+    element.value !== '' &&
+    !element.complexType &&
+    !isComplexType(element.type)
   ) {
+    // Только для простых типов добавляем текстовое значение
     currentNode.txt(String(element.value));
   }
 
   // Обработка атрибутов
-  if (element.complexType?.attributes) {
-    for (const [_attrKey, attribute] of Object.entries(element.complexType.attributes)) {
-      if (
-        attribute.name &&
-        attribute.value !== undefined &&
-        attribute.value !== null &&
-        attribute.value !== ''
-      ) {
-        currentNode.att(attribute.name, String(attribute.value));
+  if (element.complexType?.attributes && element.value?.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(element.value.attributes)) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
+        currentNode.att(attrKey, String(attrValue));
       }
     }
   }
@@ -200,6 +202,150 @@ function processElementWithValidation(parent: any, element: XSDElement): void {
       processElementWithValidation(currentNode, firstChoice);
     }
   }
+}
+
+// Новая функция для обработки complexType по определению
+function processComplexTypeByDefinition(parent: any, typeName: string, complexValue: any): void {
+  if (!complexValue || typeof complexValue !== 'object') return;
+
+  console.log('Processing complex type by definition:', typeName, complexValue);
+
+  // Обрабатываем основные поля (исключая атрибуты)
+  for (const [key, value] of Object.entries(complexValue)) {
+    if (key === 'attributes') continue;
+    
+    if (value !== undefined && value !== null && value !== '') {
+      const fieldNode = parent.ele(key);
+      
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        // Вложенный объект - рекурсивная обработка
+        processComplexTypeValue(fieldNode, value);
+      } else {
+        // Простое значение
+        fieldNode.txt(String(value));
+      }
+    }
+  }
+
+  // Обработка атрибутов
+  if (complexValue.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(complexValue.attributes)) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
+        parent.att(attrKey, String(attrValue));
+      }
+    }
+  }
+}
+
+// Новая функция для обработки complexType
+function processComplexType(parent: any, complexType: any, complexValue: any): void {
+  if (!complexValue || typeof complexValue !== 'object') return;
+
+  // Обработка элементов из all
+  if (complexType.all && complexValue) {
+    for (const [key, fieldDef] of Object.entries(complexType.all)) {
+      const fieldValue = complexValue[key];
+      if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+        const fieldNode = parent.ele(key);
+        
+        // Если значение - объект (вложенный complexType), обрабатываем рекурсивно
+        if (typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+          processComplexTypeValue(fieldNode, fieldDef, fieldValue);
+        } else {
+          fieldNode.txt(String(fieldValue));
+        }
+      }
+    }
+  }
+
+  // Обработка элементов из sequence
+  if (complexType.sequence && complexValue) {
+    for (const [key, fieldDef] of Object.entries(complexType.sequence)) {
+      const fieldValue = complexValue[key];
+      if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+        const fieldNode = parent.ele(key);
+        
+        // Если значение - объект (вложенный complexType), обрабатываем рекурсивно
+        if (typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+          processComplexTypeValue(fieldNode, fieldDef, fieldValue);
+        } else {
+          fieldNode.txt(String(fieldValue));
+        }
+      }
+    }
+  }
+
+  // Обработка атрибутов complexType
+  if (complexType.attributes && complexValue.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(complexValue.attributes)) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
+        parent.att(attrKey, String(attrValue));
+      }
+    }
+  }
+}
+
+function processComplexTypeValue(parent: any, complexValue: any): void {
+  if (!complexValue || typeof complexValue !== 'object') return;
+
+  for (const [key, value] of Object.entries(complexValue)) {
+    if (key === 'attributes') continue;
+    
+    if (value !== undefined && value !== null && value !== '') {
+      const fieldNode = parent.ele(key);
+      
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        // Рекурсивная обработка вложенных объектов
+        processComplexTypeValue(fieldNode, value);
+      } else {
+        fieldNode.txt(String(value));
+      }
+    }
+  }
+
+  // Обработка атрибутов
+  if (complexValue.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(complexValue.attributes)) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
+        parent.att(attrKey, String(attrValue));
+      }
+    }
+  }
+}
+
+// Обработка объекта complexType
+function processComplexTypeObject(parent: any, complexObject: any): void {
+  for (const [key, value] of Object.entries(complexObject)) {
+    if (value !== undefined && value !== null && value !== '') {
+      // Пропускаем атрибуты - они обрабатываются отдельно
+      if (key === 'attributes') continue;
+      
+      const childNode = parent.ele(key);
+      
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        // Рекурсивная обработка вложенных объектов
+        processComplexTypeObject(childNode, value);
+      } else {
+        childNode.txt(String(value));
+      }
+    }
+  }
+
+  // Обработка атрибутов
+  if (complexObject.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(complexObject.attributes)) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
+        parent.att(attrKey, String(attrValue));
+      }
+    }
+  }
+}
+
+// Проверка, является ли тип complexType
+function isComplexType(typeName: string): boolean {
+  if (!typeName) return false;
+  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
+  return complexTypes.includes(typeName);
 }
 
 // Функция для получения информации о схеме (для отладки)

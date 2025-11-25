@@ -83,6 +83,44 @@
       </div>
     </div>
 
+    <!-- Поле для сложных типов -->
+  <div v-else-if="element.type && isComplexType(element.type)" class="mb-3">
+      <label class="flex flex-col gap-1">
+        <span
+          v-if="element.annotation?.documentation"
+          class="text-xs text-gray-500 italic"
+        >
+          {{ element.annotation.documentation }}
+        </span>
+        
+        <div class="flex gap-2 items-start">
+          <ComplexTypeSelector
+            :type-name="element.type"
+            @type-selected="onComplexTypeSelected"
+            class="flex-1"
+          />
+          
+          <button
+            v-if="hasComplexTypeValue"
+            @click="clearComplexType"
+            class="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 whitespace-nowrap"
+            type="button"
+          >
+            Очистить
+          </button>
+        </div>
+
+        <!-- Отображение выбранного complexType в читаемом виде -->
+        <div v-if="hasComplexTypeValue" class="mt-3 p-4 bg-gray-50 rounded-lg border">
+          <h4 class="font-medium text-gray-700 mb-3">Выбранный {{ element.type }}:</h4>
+          <ComplexTypeDisplay 
+            :data="element.value"
+            :type-definition="getComplexTypeDefinition(element.type)"
+          />
+        </div>
+      </label>
+    </div>
+
     <!-- Простой элемент с типом -->
     <div v-else class="mb-3">
       <label class="flex flex-col gap-1">
@@ -108,12 +146,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, inject } from 'vue';
+import ComplexTypeSelector from './ComplexTypeSelector.vue';
+import ComplexTypeDisplay from './ComplexTypeDisplay.vue';
 
 interface Props {
   element: any;
   level: number;
   parentPath?: string;
+  complexTypesStore?: any;
 }
 
 interface Emits {
@@ -124,12 +165,46 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+const schema = inject('schema', {});
+
 const isExpanded = ref(true);
 
 // Вычисляемый путь к элементу
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
 });
+
+const isComplexType = (type: string): boolean => {
+  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
+  return complexTypes.includes(type);
+};
+
+// Проверка наличия значения complexType
+const hasComplexTypeValue = computed(() => {
+  return props.element.value && typeof props.element.value === 'object' && Object.keys(props.element.value).length > 0;
+});
+
+// Получение определения complexType
+const getComplexTypeDefinition = (typeName: string) => {
+  return schema?.complexTypes?.[typeName];
+};
+
+// Обработка выбора complexType
+const onComplexTypeSelected = (instance: any) => {
+  const path = currentPath.value;
+  console.log('Complex type selected for path:', path, instance);
+  
+  // Сохраняем данные complexType
+  if (instance && instance.data) {
+    emit('update-value', path, instance.data);
+  }
+};
+
+// Очистка complexType
+const clearComplexType = () => {
+  const path = currentPath.value;
+  emit('update-value', path, null);
+};
 
 // Переключение состояния раскрытия/скрытия
 const toggleExpanded = () => {

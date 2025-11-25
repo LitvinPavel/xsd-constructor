@@ -11,6 +11,11 @@ interface XSDSchema {
   simpleTypes: { [key: string]: any };
 }
 
+interface ComplexTypeInstance {
+  type: string;
+  data: any;
+}
+
 export function useForm() {
 // Реактивные данные
 const schema = reactive<XSDSchema>({
@@ -20,6 +25,7 @@ const schema = reactive<XSDSchema>({
 });
 
 const generatedXML = ref<string>('');
+const complexTypesStore = ref<ComplexTypeInstance[]>([]);
 
 // Хранилище значений элементов
 const elementValues = reactive<{ [path: string]: any }>({});
@@ -52,6 +58,11 @@ const handleFileUpload = async (event: Event) => {
 const parseXSD = (xsdContent: string): void => {
   const parser = new XSDParser();
   const parsedSchema = parser.parseXSDToJSON(xsdContent);
+  
+  // Получаем структурированные определения complexTypes
+  const complexTypeDefinitions = parser.getComplexTypeDefinitions(
+    parser['parser'].parse(xsdContent) // Используем сырые данные парсера
+  );
 
   // Очищаем предыдущие значения
   Object.keys(schema.elements).forEach(key => delete schema.elements[key]);
@@ -61,11 +72,14 @@ const parseXSD = (xsdContent: string): void => {
 
   // Копируем новые данные
   Object.assign(schema, parsedSchema);
+  
+  // Добавляем структурированные complexTypes
+  Object.assign(schema.complexTypes, complexTypeDefinitions);
 
   // Инициализируем значения для ВСЕХ элементов
   initializeElementValues(schema.elements);
 
-  console.log('Parsed schema with elements:', schema.elements);
+  console.log('Parsed schema with complexTypes:', schema.complexTypes);
 };
 
 // Инициализация структуры значений элементов
@@ -98,11 +112,44 @@ const initializeElementValues = (
 const updateElementValue = (elementPath: string, value: any) => {
   console.log('Updating element value:', elementPath, value);
 
+  // Если значение - complexType, сохраняем его полностью
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    // Проверяем, является ли это complexType
+    const targetElement = findElementByPath(schema.elements, elementPath);
+    if (targetElement && targetElement.type && isComplexType(targetElement.type)) {
+      console.log('Saving complex type:', targetElement.type, value);
+    }
+  }
+
   // Сохраняем значение в хранилище
   elementValues[elementPath] = value;
 
   // Также обновляем значение в самом элементе schema
   updateSchemaElementValue(schema.elements, elementPath, value);
+};
+
+// Добавим функцию проверки complexType
+const isComplexType = (typeName: string): boolean => {
+  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
+  return complexTypes.includes(typeName);
+};
+
+// Обновим функцию синхронизации значений
+const syncValuesToSchema = () => {
+  Object.entries(elementValues).forEach(([path, value]) => {
+    // Если значение - complexType объект, сохраняем его как есть
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const targetElement = findElementByPath(schema.elements, path);
+      if (targetElement && targetElement.type && isComplexType(targetElement.type)) {
+        // Для complexType сохраняем объект полностью
+        updateSchemaElementValue(schema.elements, path, value);
+        return;
+      }
+    }
+    
+    // Для обычных значений используем стандартную логику
+    updateSchemaElementValue(schema.elements, path, value);
+  });
 };
 
 // Рекурсивное обновление значения в структуре schema
@@ -352,14 +399,30 @@ const generateXML = () => {
   }
 };
 
-// Синхронизация значений из elementValues в schema
-const syncValuesToSchema = () => {
-  Object.entries(elementValues).forEach(([path, value]) => {
-    updateSchemaElementValue(schema.elements, path, value);
-  });
+
+// Функция для получения экземпляров по типу
+const getComplexTypeInstances = (type: string): ComplexTypeInstance[] => {
+  return complexTypesStore.value.filter(instance => instance.type === type);
+};
+
+// Функция для добавления сложного типа в схему
+const applyComplexTypeToElement = (elementPath: string, complexTypeInstance: ComplexTypeInstance) => {
+  const targetElement = findElementByPath(schema.elements, elementPath);
+  if (targetElement) {
+    targetElement.value = complexTypeInstance.data;
+    updateElementValue(elementPath, complexTypeInstance.data);
+  }
 };
 
   return {
-    schema, generatedXML, generateXML, handleFileUpload, updateElementValue, handleAddItem
+    schema,
+    generatedXML,
+    generateXML,
+    handleFileUpload,
+    updateElementValue,
+    handleAddItem,
+    complexTypesStore,
+    getComplexTypeInstances,
+    applyComplexTypeToElement
   };
 }

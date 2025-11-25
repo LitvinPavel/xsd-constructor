@@ -87,9 +87,9 @@
 
 <script setup lang="ts">
 import { ref, provide } from 'vue';
-import { useForm } from '../composables/useForm';
-import XSDGroup from './XSDGroup.vue';
-import ComplexTypeForm from './ComplexTypeForm.vue';
+import { useForm } from '@/composables/useForm';
+import XSDGroup from '@/components/XSDGroup.vue';
+import ComplexTypeForm from '@/components/ComplexTypeForm.vue';
 
 const { schema, generatedXML, generateXML, handleFileUpload, updateElementValue, handleAddItem } = useForm();
 

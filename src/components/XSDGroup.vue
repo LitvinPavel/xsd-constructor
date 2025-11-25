@@ -147,8 +147,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, inject } from 'vue';
-import ComplexTypeSelector from './ComplexTypeSelector.vue';
-import ComplexTypeDisplay from './ComplexTypeDisplay.vue';
+import ComplexTypeSelector from '@/components/ComplexTypeSelector.vue';
+import ComplexTypeDisplay from '@/components/ComplexTypeDisplay.vue';
 
 interface Props {
   element: any;
@@ -165,7 +165,7 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const schema = inject('schema', {});
+const schema = inject('schema', { complexTypes: null });
 
 const isExpanded = ref(true);
 

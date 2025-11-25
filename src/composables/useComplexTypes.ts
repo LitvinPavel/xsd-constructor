@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue';
+import { ref, type Ref } from 'vue';
 
 export interface ComplexTypeInstance {
   id: string;
@@ -7,7 +7,25 @@ export interface ComplexTypeInstance {
   name?: string;
 }
 
-export function useComplexTypes() {
+export interface ComplexTypesStore {
+  instances: Ref<{
+        id: string;
+        type: string;
+        data: any;
+        name?: string | undefined;
+    }[], ComplexTypeInstance[] | {
+        id: string;
+        type: string;
+        data: any;
+        name?: string | undefined;
+    }[]>;
+    addInstance: (type: string, data: any, name?: string) => ComplexTypeInstance;
+    removeInstance: (id: string) => void;
+    getInstancesByType: (type: string) => ComplexTypeInstance[];
+    getInstanceById: (id: string) => ComplexTypeInstance | undefined;
+}
+
+export function useComplexTypes(): ComplexTypesStore {
   const instances = ref<ComplexTypeInstance[]>([]);
   
   // Генерация уникального ID

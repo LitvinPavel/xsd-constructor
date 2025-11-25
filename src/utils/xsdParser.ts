@@ -145,65 +145,89 @@ private extractComplexTypeStructure(complexType: any): any {
   };
 
   // Обработка sequence
-  if (complexType['xs:sequence']?.['xs:element']) {
-    const elements = Array.isArray(complexType['xs:sequence']['xs:element']) 
-      ? complexType['xs:sequence']['xs:element'] 
-      : [complexType['xs:sequence']['xs:element']];
+  if (complexType['xs:sequence']) {
+    structure.sequence = this.extractSequenceOrAllStructure(complexType['xs:sequence']);
     
-    elements.forEach((element: any) => {
-      const elementName = element['@_name'];
-      if (elementName) {
-        structure.sequence[elementName] = this.extractElementStructure(element);
-      }
-    });
+    // Особенная обработка для Condition - извлекаем choice из sequence
+    if (complexType['@_name'] === 'Condition' && complexType['xs:sequence']['xs:choice']) {
+      structure.choice = this.extractChoiceStructure(complexType['xs:sequence']['xs:choice']);
+    }
   }
 
   // Обработка all
-  if (complexType['xs:all']?.['xs:element']) {
-    const elements = Array.isArray(complexType['xs:all']['xs:element']) 
-      ? complexType['xs:all']['xs:element'] 
-      : [complexType['xs:all']['xs:element']];
-    
-    elements.forEach((element: any) => {
-      const elementName = element['@_name'];
-      if (elementName) {
-        structure.all[elementName] = this.extractElementStructure(element);
-      }
-    });
+  if (complexType['xs:all']) {
+    structure.all = this.extractSequenceOrAllStructure(complexType['xs:all']);
   }
 
-  // Обработка choice
-  if (complexType['xs:choice']?.['xs:element']) {
-    structure.choice = {
-      elements: {}
-    };
-    
-    const elements = Array.isArray(complexType['xs:choice']['xs:element']) 
-      ? complexType['xs:choice']['xs:element'] 
-      : [complexType['xs:choice']['xs:element']];
-    
-    elements.forEach((element: any) => {
-      const elementName = element['@_name'];
-      if (elementName) {
-        structure.choice.elements[elementName] = this.extractElementStructure(element);
-      }
-    });
+  // Обработка choice на верхнем уровне
+  if (complexType['xs:choice']) {
+    structure.choice = this.extractChoiceStructure(complexType['xs:choice']);
   }
 
   // Обработка атрибутов
   if (complexType['xs:attribute']) {
-    const attributes = Array.isArray(complexType['xs:attribute']) 
-      ? complexType['xs:attribute'] 
-      : [complexType['xs:attribute']];
+    structure.attributes = this.extractAttributesStructure(complexType['xs:attribute']);
+  }
+
+  return structure;
+}
+
+// Новая функция для извлечения sequence или all
+private extractSequenceOrAllStructure(sequenceOrAll: any): any {
+  const structure: any = {};
+  
+  if (sequenceOrAll['xs:element']) {
+    const elements = Array.isArray(sequenceOrAll['xs:element']) 
+      ? sequenceOrAll['xs:element'] 
+      : [sequenceOrAll['xs:element']];
     
-    attributes.forEach((attribute: any) => {
-      const attrName = attribute['@_name'];
-      if (attrName) {
-        structure.attributes[attrName] = this.extractAttributeStructure(attribute);
+    elements.forEach((element: any) => {
+      const elementName = element['@_name'];
+      if (elementName) {
+        structure[elementName] = this.extractElementStructure(element);
+      }
+    });
+  }
+  
+  return structure;
+}
+
+// Улучшенная функция для извлечения choice
+private extractChoiceStructure(choice: any): any {
+  const choiceStructure: any = {
+    elements: {},
+    annotation: choice['xs:annotation'] ? this.processAnnotation(choice['xs:annotation']) : undefined
+  };
+
+  if (choice['xs:element']) {
+    const elements = Array.isArray(choice['xs:element']) 
+      ? choice['xs:element'] 
+      : [choice['xs:element']];
+    
+    elements.forEach((element: any) => {
+      const elementName = element['@_name'];
+      if (elementName) {
+        choiceStructure.elements[elementName] = this.extractElementStructure(element);
       }
     });
   }
 
+  return choiceStructure;
+}
+
+// Функция для извлечения атрибутов
+private extractAttributesStructure(attributes: any): any {
+  const structure: any = {};
+  
+  const attrs = Array.isArray(attributes) ? attributes : [attributes];
+  
+  attrs.forEach((attribute: any) => {
+    const attrName = attribute['@_name'];
+    if (attrName) {
+      structure[attrName] = this.extractAttributeStructure(attribute);
+    }
+  });
+  
   return structure;
 }
 

@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { ref, computed, inject } from 'vue';
 import ComplexTypeForm from './ComplexTypeForm.vue';
+import type { ComplexTypeInstance, ComplexTypesStore } from '../composables/useComplexTypes';
 
 interface Props {
   typeName: string;
@@ -45,11 +46,11 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'type-selected', instance: any): void;
+  (e: 'type-selected', instance: ComplexTypeInstance): void;
 }>();
 
 const schema = inject('schema', {});
-const complexTypesStore = inject('complexTypesStore');
+const complexTypesStore: ComplexTypesStore | undefined = inject('complexTypesStore');
 
 const selectedInstanceId = ref('');
 const showCreateForm = ref(false);
@@ -63,7 +64,7 @@ const availableInstances = computed(() => {
   return complexTypesStore.getInstancesByType(props.typeName);
 });
 
-const onInstanceSelected = (instance: any) => {
+const onInstanceSelected = () => {
   if (selectedInstanceId.value === 'new') {
     showCreateForm.value = true;
   } else if (selectedInstanceId.value) {
@@ -79,7 +80,7 @@ const onInstanceSelected = (instance: any) => {
   }
 };
 
-const onNewInstanceCreated = (instance: any) => {
+const onNewInstanceCreated = (instance: ComplexTypeInstance) => {
   emit('type-selected', instance);
   showCreateForm.value = false;
   selectedInstanceId.value = '';

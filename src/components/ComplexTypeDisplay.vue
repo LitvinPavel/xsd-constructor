@@ -33,8 +33,8 @@
       class="mt-3 pt-3 border-t border-gray-200"
     >
       <div class="text-xs font-semibold text-gray-500 mb-2">Атрибуты:</div>
-      <div 
-        v-for="(value, key) in data.attributes" 
+      <template v-for="(value, key) in data.attributes" >
+        <div 
         :key="`attr_${key}`"
         v-if="value !== undefined && value !== null && value !== ''"
         class="flex mb-1"
@@ -46,6 +46,7 @@
           {{ value }}
         </div>
       </div>
+      </template>
     </div>
 
     <!-- Сообщение об отсутствии данных -->
@@ -109,7 +110,7 @@ const getFieldLabel = (fieldKey: string | number): string => {
   return `${fieldKey}`;
 };
 
-const isNestedComplexType = (value: any, fieldKey: string): boolean => {
+const isNestedComplexType = (value: any, fieldKey: string | number): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   
   if (!props.typeDefinition) return false;
@@ -125,7 +126,7 @@ const isNestedComplexType = (value: any, fieldKey: string): boolean => {
   return false;
 };
 
-const getNestedTypeDefinition = (fieldKey: string): any => {
+const getNestedTypeDefinition = (fieldKey: string | number): any => {
   if (!props.typeDefinition) return null;
   
   // Ищем в all

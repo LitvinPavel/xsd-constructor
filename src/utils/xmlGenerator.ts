@@ -153,7 +153,6 @@ function processRootElement(parent: any, rootElement: XSDElement): void {
 function processElementWithValidation(parent: any, element: XSDElement): void {
   if (!element || !element.name) return;
 
-  // Создаем текущий элемент
   const currentNode = parent.ele(element.name);
 
   // Обработка complexType (должна быть ДО обработки текстового значения)
@@ -169,8 +168,12 @@ function processElementWithValidation(parent: any, element: XSDElement): void {
     !element.complexType &&
     !isComplexType(element.type)
   ) {
-    // Только для простых типов добавляем текстовое значение
     currentNode.txt(String(element.value));
+  }
+
+  // Обработка choice в complexType
+  if (element.complexType?.choice?.elements && element.value) {
+    processChoiceElements(currentNode, element.complexType.choice.elements, element.value);
   }
 
   // Обработка атрибутов
@@ -200,6 +203,27 @@ function processElementWithValidation(parent: any, element: XSDElement): void {
     const firstChoice = element.complexType.choice.elements[firstChoiceKey as string];
     if (firstChoice) {
       processElementWithValidation(currentNode, firstChoice);
+    }
+  }
+}
+
+// Новая функция для обработки choice элементов
+function processChoiceElements(parent: any, choiceElements: { [key: string]: XSDElement }, complexValue: any): void {
+  if (!complexValue || typeof complexValue !== 'object') return;
+
+  // Ищем выбранный choice элемент
+  for (const [choiceKey, choiceDef] of Object.entries(choiceElements)) {
+    const choiceValue = complexValue[choiceKey];
+    if (choiceValue !== undefined && choiceValue !== null && choiceValue !== '') {
+      const choiceNode = parent.ele(choiceKey);
+      
+      // Обработка вложенного complexType в choice
+      if (choiceDef.complexType && typeof choiceValue === 'object') {
+        processComplexType(choiceNode, choiceDef.complexType, choiceValue);
+      } else {
+        choiceNode.txt(String(choiceValue));
+      }
+      break; // В choice выбирается только один элемент
     }
   }
 }
@@ -250,7 +274,7 @@ function processComplexType(parent: any, complexType: any, complexValue: any): v
         
         // Если значение - объект (вложенный complexType), обрабатываем рекурсивно
         if (typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
-          processComplexTypeValue(fieldNode, fieldDef, fieldValue);
+          processComplexTypeValue(fieldNode, fieldDef);
         } else {
           fieldNode.txt(String(fieldValue));
         }
@@ -267,7 +291,7 @@ function processComplexType(parent: any, complexType: any, complexValue: any): v
         
         // Если значение - объект (вложенный complexType), обрабатываем рекурсивно
         if (typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
-          processComplexTypeValue(fieldNode, fieldDef, fieldValue);
+          processComplexTypeValue(fieldNode, fieldDef);
         } else {
           fieldNode.txt(String(fieldValue));
         }
@@ -342,7 +366,7 @@ function processComplexTypeObject(parent: any, complexObject: any): void {
 }
 
 // Проверка, является ли тип complexType
-function isComplexType(typeName: string): boolean {
+function isComplexType(typeName?: string): boolean {
   if (!typeName) return false;
   const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
   return complexTypes.includes(typeName);

@@ -8,8 +8,8 @@
 
 <script setup lang="ts">
 import { provide } from 'vue';
-import XSDForm from './components/XSDForm';
-import { useComplexTypes } from './composables/useComplexTypes';
+import XSDForm from '@/components/XSDForm.vue';
+import { useComplexTypes } from '@/composables/useComplexTypes';
 
 // Создаем хранилище сложных типов и предоставляем его всем компонентам
 const complexTypesStore = useComplexTypes();

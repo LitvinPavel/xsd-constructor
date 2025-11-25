@@ -337,34 +337,6 @@ function processComplexTypeValue(parent: any, complexValue: any): void {
   }
 }
 
-// Обработка объекта complexType
-function processComplexTypeObject(parent: any, complexObject: any): void {
-  for (const [key, value] of Object.entries(complexObject)) {
-    if (value !== undefined && value !== null && value !== '') {
-      // Пропускаем атрибуты - они обрабатываются отдельно
-      if (key === 'attributes') continue;
-      
-      const childNode = parent.ele(key);
-      
-      if (typeof value === 'object' && !Array.isArray(value)) {
-        // Рекурсивная обработка вложенных объектов
-        processComplexTypeObject(childNode, value);
-      } else {
-        childNode.txt(String(value));
-      }
-    }
-  }
-
-  // Обработка атрибутов
-  if (complexObject.attributes) {
-    for (const [attrKey, attrValue] of Object.entries(complexObject.attributes)) {
-      if (attrValue !== undefined && attrValue !== null && attrValue !== '') {
-        parent.att(attrKey, String(attrValue));
-      }
-    }
-  }
-}
-
 // Проверка, является ли тип complexType
 function isComplexType(typeName?: string): boolean {
   if (!typeName) return false;

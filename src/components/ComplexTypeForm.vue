@@ -16,11 +16,11 @@
         >
           <option value="">-- Выберите тип --</option>
           <option 
-            v-for="typeName in availableComplexTypeNames" 
-            :key="typeName" 
-            :value="typeName"
+            v-for="item in availableComplexTypeNames" 
+            :key="item.value" 
+            :value="item.value"
           >
-            {{ typeName }}
+            {{ item.title }}
           </option>
         </select>
         <div v-if="targetType" class="text-sm text-gray-600 mt-1">
@@ -273,8 +273,14 @@ import ComplexTypeField from '@/components/ComplexTypeField.vue';
 import ComplexTypeInstanceView from '@/components/ComplexTypeInstanceView.vue';
 import type { ComplexTypeInstance, ComplexTypesStore } from '../composables/useComplexTypes';
 
+interface XSDSchema {
+  elements: { [key: string]: any };
+  complexTypes: { [key: string]: any };
+  simpleTypes: { [key: string]: any };
+}
+
 interface Props {
-  schema: any;
+  schema: XSDSchema;
   targetType?: string;
 }
 
@@ -307,7 +313,12 @@ const selectedChoiceDefinition = computed(() => {
 // Доступные имена complexTypes
 const availableComplexTypeNames = computed(() => {
   if (!props.schema.complexTypes) return [];
-  return Object.keys(props.schema.complexTypes);
+  return Object.keys(props.schema.complexTypes).map(key => {
+    return {
+      title: props.schema.complexTypes[key]?.annotation?.documentation,
+      value: key
+    }
+  });
 });
 
 // Используем instances из хранилища
@@ -316,7 +327,7 @@ const createdInstances = computed(() => {
   return complexTypesStore?.instances.value;
 });
 
-const getTypeDefinition = (typeName: string) => {
+const getTypeDefinition = (typeName: string | number) => {
   return props.schema.complexTypes?.[typeName];
 };
 

@@ -4,7 +4,7 @@ export interface XSDSchema {
     attributeFormDefault?: string;
   };
   elements: XSDElement[];
-  complexTypes: XSDComplexType[];
+  complexTypes: { [key: string]: XSDComplexType };
   simpleTypes: XSDSimpleType[];
 }
 

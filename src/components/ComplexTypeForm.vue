@@ -280,7 +280,7 @@ interface XSDSchema {
 }
 
 interface Props {
-  schema: XSDSchema;
+  schema?: XSDSchema;
   targetType?: string;
 }
 
@@ -312,10 +312,10 @@ const selectedChoiceDefinition = computed(() => {
 
 // Доступные имена complexTypes
 const availableComplexTypeNames = computed(() => {
-  if (!props.schema.complexTypes) return [];
+  if (!props.schema?.complexTypes) return [];
   return Object.keys(props.schema.complexTypes).map(key => {
     return {
-      title: props.schema.complexTypes[key]?.annotation?.documentation,
+      title: props.schema?.complexTypes[key]?.annotation?.documentation,
       value: key
     }
   });
@@ -328,12 +328,12 @@ const createdInstances = computed(() => {
 });
 
 const getTypeDefinition = (typeName: string | number) => {
-  return props.schema.complexTypes?.[typeName];
+  return props.schema?.complexTypes?.[typeName];
 };
 
 // Определение complexType
 const complexTypeDefinition = computed(() => {
-  if (!currentType.value || !props.schema.complexTypes) return null;
+  if (!currentType.value || !props.schema?.complexTypes) return null;
   return props.schema.complexTypes[currentType.value];
 });
 

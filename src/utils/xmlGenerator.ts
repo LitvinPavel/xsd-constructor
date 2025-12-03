@@ -54,25 +54,25 @@ function processElementWithValidation(parent: any, element: any): void {
   }
 
   if (element.complexType?.complexContent?.extension?.sequence) {
-    for (const [childKey, child] of Object.entries(element.complexType.complexContent.extension.sequence)) {
+    for (const [_childKey, child] of Object.entries(element.complexType.complexContent.extension.sequence)) {
       processElementWithValidation(currentNode, child);
     }
   }
 
   if (element.complexType?.sequence) {
-    for (const [childKey, child] of Object.entries(element.complexType.sequence)) {
+    for (const [_childKey, child] of Object.entries(element.complexType.sequence)) {
       processElementWithValidation(currentNode, child);
     }
   }
 
   if (element.complexType?.all) {
-    for (const [childKey, child] of Object.entries(element.complexType.all)) {
+    for (const [_childKey, child] of Object.entries(element.complexType.all)) {
       processElementWithValidation(currentNode, child);
     }
   }
 }
 
-function processComplexTypeByDefinition(parent: any, typeName: string, complexValue: any, elementDefinition?: any): void {
+function processComplexTypeByDefinition(parent: any, _typeName: string, complexValue: any, elementDefinition?: any): void {
   if (!complexValue || typeof complexValue !== 'object') return;
 
   if (elementDefinition?.complexType?.complexContent?.extension?.base === 'ReqElement') {

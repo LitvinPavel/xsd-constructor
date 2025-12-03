@@ -10,7 +10,7 @@
             {{ getFieldLabel(`${key}`) }}
           </div>
           <div class="w-2/3 text-sm">
-            <template v-if="isComplexTypeValue(value, `${key}`)">
+            <template v-if="isComplexTypeValue(value)">
               <!-- Рекурсивный вызов для вложенных complexType -->
               <ComplexTypeInstanceView 
                 :data="value" 
@@ -96,7 +96,7 @@ const getFieldLabel = (fieldKey: string): string => {
   return fieldKey;
 };
 
-const isComplexTypeValue = (value: any, fieldKey: string): boolean => {
+const isComplexTypeValue = (value: any): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   
   // Для упрощения считаем объектом complexType

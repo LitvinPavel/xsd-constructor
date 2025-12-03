@@ -333,9 +333,7 @@ import {
   canRemoveItem,
   isKSIIdentificationField,
   getInputType,
-  generateDefaultUid,
   decodeHTMLEntities,
-  getReqElementType as getReqElementTypeUtil,
   isReqElementExtension as isReqElementExtensionUtil,
 } from "@/utils/xsdUtils";
 
@@ -377,17 +375,6 @@ const mockProperties = computed(() => {
 
 const isReqElementExtension = computed(() => {
   return isReqElementExtensionUtil(props.element);
-});
-
-const reqElementType = computed(() =>
-  getReqElementTypeUtil(props.element.name)
-);
-const defaultUid = computed(() => generateDefaultUid(props.element.name));
-const reqElementUid = computed(() => {
-  if (!props.element.value?.attributes?.ReqElementUId) {
-    return defaultUid.value;
-  }
-  return props.element.value.attributes.ReqElementUId;
 });
 
 const getReqElementFieldValue = (fieldName: string): any => {

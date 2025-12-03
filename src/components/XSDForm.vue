@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide } from 'vue';
+import { provide } from 'vue';
 import { useForm } from '@/composables/useForm';
 import XSDGroup from '@/components/XSDGroup.vue';
 

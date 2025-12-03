@@ -1,16 +1,17 @@
+<!-- components/XSDGroup.vue -->
 <template>
-  <div class="mb-4" :class="level === 0 ? 'border border-gray-200 rounded-lg p-4' : `ml-${level * 2} pl-4 border-l-2 border-gray-300`">
-    <!-- Группа для complexType с sequence -->
-    <div
-      v-if="
-        !element.type &&
-        (element.complexType?.sequence || element.complexType?.all)
-      "
-      class="w-full"
-    >
-      <div class="mb-4 pb-2 flex justify-between items-start flex-wrap gap-4">
+  <div class="mb-1" :class="[level === 0 ? 'p-4' : `ml-${level * 2} pl-4`]">
+    <div v-if="!element.type && element.complexType?.sequence" class="w-full">
+      <div
+        v-if="element.annotation?.documentation"
+        class="mb-1 pb-1 flex justify-between items-start flex-wrap gap-4"
+      >
         <div class="flex items-center gap-2">
           <button
+            v-if="
+              Object.keys(element.complexType?.sequence || {}).length > 1 &&
+              level > 0
+            "
             @click="toggleExpanded"
             class="flex items-center justify-center w-6 h-6 text-gray-500 hover:text-gray-700 transition-colors"
           >
@@ -21,7 +22,12 @@
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
             <svg
               v-else
@@ -30,43 +36,109 @@
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           </button>
-          
-          <h3 v-if="element.annotation?.documentation" class="text-lg font-semibold text-gray-800 m-0">
+          <h3 class="font-semibold text-gray-800 m-0">
             {{ element.annotation.documentation }}
           </h3>
         </div>
 
-        <!-- Кнопка добавления для Entities, Relations и Properties -->
-        <button
-          v-if="isCollectionElement(element.name)"
-          @click="handleAddItem"
-          class="bg-green-500 text-white border-none py-2 px-4 rounded cursor-pointer text-sm transition-colors hover:bg-green-600 whitespace-nowrap"
-          type="button"
-        >
-          + Добавить {{ getItemTypeDisplayName(element.name) }}
-        </button>
+        <div v-if="isEntitiesOrPropertiesOrRelations" class="flex gap-2">
+          <button
+            @click="handleAddElement(element.name)"
+            class="bg-green-500 text-white border-none py-2 px-4 rounded cursor-pointer text-sm transition-colors hover:bg-green-600 whitespace-nowrap"
+            type="button"
+          >
+            + Добавить
+          </button>
+        </div>
       </div>
 
       <div v-show="isExpanded">
-        <!-- Рендеринг элементов из sequence -->
-        <template v-if="element.complexType?.sequence">
+        <template v-if="isReqElementExtension">
+          <div class="p-2 mb-1">
+            <div
+              v-for="(field, key) in schema?.complexTypes?.ReqElement
+                ?.attributes"
+              :key="key"
+              class="flex items-center gap-4 mb-3"
+            >
+              <label class="w-1/4 text-sm">
+                {{ field.annotation?.documentation || field.name }}
+              </label>
+              <input
+                type="text"
+                :value="element.value.attributes[key]"
+                disabled
+                @input="onReqElementTypeChange"
+                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                :placeholder="`Введите значение для ${field.name}`"
+              />
+            </div>
+            <div
+              v-for="(field, key) in element.complexType.complexContent
+                .extension?.attributes"
+              :key="key"
+              class="flex items-center gap-4 mb-3"
+            >
+              <label class="w-1/4 text-sm">
+                {{ field.annotation?.documentation || field.name }}
+              </label>
+              <input
+                type="text"
+                :value="element.value.attributes[key]"
+                @input="onReqElementUidChange"
+                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                :placeholder="`Введите значение для ${field.name}`"
+              />
+            </div>
+            <div
+              v-for="field in schema?.complexTypes?.ReqElement?.sequence"
+              :key="field.name"
+              class="flex items-center gap-4 mb-3"
+            >
+              <label class="w-1/4 text-sm">
+                {{ field.annotation?.documentation || field.name }}
+              </label>
+              <textarea
+                v-if="field.name === 'ReqElementData'"
+                :value="getReqElementFieldValue(field.name)"
+                @input="onReqElementFieldChange(field.name, $event)"
+                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 font-mono"
+                rows="6"
+                :placeholder="`Введите значение для ${field.name}`"
+              ></textarea>
+              <input
+                v-else
+                :type="getInputType(field.type)"
+                :value="getReqElementFieldValue(field.name)"
+                @input="onReqElementFieldChange(field.name, $event)"
+                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                :placeholder="`Введите значение для ${field.name}`"
+              />
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
             :key="String(key)"
-            class="mb-4"
-            :class="{
-              'border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 bg-gray-50': isTemplateItem(element.name, String(key))
-            }"
+            class="mb-1"
+            :class="{ 'border rounded-lg border-gray-300 pr-4 pt-2': canRemoveItem(item.name) }"
           >
-            <div class="flex justify-end">
+            <div v-if="canRemoveItem(item.name)" class="flex justify-end -mb-6">
               <button
-                v-if="canRemoveItem(element.name, String(key))"
                 @click="removeItem(String(key))"
                 class="bg-red-500 text-white border-none py-1 px-2 rounded cursor-pointer text-sm hover:bg-red-600"
                 type="button"
+                :disabled="isKSIIdentificationField(item)"
               >
                 × Удалить
               </button>
@@ -75,33 +147,69 @@
               :element="item"
               :level="level + 1"
               :parent-path="getItemPath(String(key))"
+              :current-entity-path="
+                element.name === 'Entities'
+                  ? getItemPath(String(key))
+                  : currentEntityPath
+              "
               @update-value="handleChildUpdate"
-              @add-item="handleChildAddItem"
+              @add-entity="handleChildAddEntity"
+              @add-property="handleChildAddProperty"
+              @add-relation="handleChildAddRelation"
+            />
+          </div>
+        </template>
+
+        <template v-if="element.complexType?.all">
+          <div
+            v-for="(item, key) in element.complexType.all"
+            :key="String(key)"
+            class="mb-1"
+          >
+            <XSDGroup
+              :element="item"
+              :level="level + 1"
+              :parent-path="getItemPath(String(key))"
+              :current-entity-path="currentEntityPath"
+              @update-value="handleChildUpdate"
+              @add-entity="handleChildAddEntity"
+              @add-property="handleChildAddProperty"
+              @add-relation="handleChildAddRelation"
             />
           </div>
         </template>
       </div>
     </div>
 
-    <!-- Поле для сложных типов -->
-  <div v-else-if="element.type && isComplexType(element.type)" class="mb-3">
-      <label class="flex flex-col gap-1">
+    <div v-else-if="element.type && isComplexType(element.type)" class="mb-3">
+      <label class="flex items-center w-full gap-4">
         <span
           v-if="element.annotation?.documentation"
-          class="text-xs text-gray-500 italic"
+          class="w-1/4 text-sm"
         >
           {{ element.annotation.documentation }}
         </span>
-        
-        <div class="flex gap-2 items-start">
-          <ComplexTypeSelector
-            :type-name="element.type"
-            @type-selected="onComplexTypeSelected"
-            class="flex-1"
-          />
-          
+
+        <div class="flex-1">
+          <div class="flex gap-2 items-start flex-1">
+          <select
+            v-model="selectedComplexTypeId"
+            @change="onComplexTypeSelected"
+            class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+            :disabled="isKSIIdentificationField(element)"
+          >
+            <option value="">-- Выберите из списка --</option>
+            <option
+              v-for="instance in availableMockInstances"
+              :key="instance.id"
+              :value="instance.id"
+            >
+              {{ instance.annotation?.documentation || instance.name }}
+            </option>
+          </select>
+
           <button
-            v-if="hasComplexTypeValue"
+            v-if="hasComplexTypeValue && !isKSIIdentificationField(element)"
             @click="clearComplexType"
             class="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 whitespace-nowrap"
             type="button"
@@ -109,24 +217,27 @@
             Очистить
           </button>
         </div>
-
-        <!-- Отображение выбранного complexType в читаемом виде -->
-        <div v-if="hasComplexTypeValue" class="mt-3 p-4 bg-gray-50 rounded-lg border">
-          <h4 class="font-medium text-gray-700 mb-3">Выбранный {{ element.type }}:</h4>
-          <ComplexTypeDisplay 
+        <div
+          v-if="hasComplexTypeValue"
+          class="p-4 bg-gray-100 rounded-b-lg border-x border-b border-gray-300"
+        >
+          <ComplexTypeInstanceView
             :data="element.value"
             :type-definition="getComplexTypeDefinition(element.type)"
           />
         </div>
+        </div>
+
+        
       </label>
+      
     </div>
 
-    <!-- Простой элемент с типом -->
-    <div v-else class="mb-3">
-      <label class="flex flex-col gap-1">
+    <div v-else-if="element.type || element.simpleType" class="mb-3">
+      <label class="flex items-center w-full gap-4">
         <span
           v-if="element.annotation?.documentation"
-          class="text-xs text-gray-500 italic"
+          class="w-1/4 text-sm"
         >
           {{ element.annotation.documentation }}
         </span>
@@ -135,216 +246,332 @@
           :value="getElementValue()"
           @input="handleInputChange($event)"
           class="py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          :class="{ 'flex-1': getInputType(element.type) !== 'checkbox' }"
           :placeholder="`Введите значение для ${element.name}`"
-          :class="{
-            'w-auto mr-2': getInputType(element.type) === 'checkbox'
-          }"
         />
       </label>
+    </div>
+
+    <div
+      v-if="showEntitySelector"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto"
+      >
+        <h3 class="text-lg font-semibold mb-4">Выберите Entity</h3>
+        <div class="space-y-2">
+          <button
+            v-for="entity in mockEntities"
+            :key="entity.id"
+            @click="selectEntity(entity)"
+            class="w-full text-left p-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          >
+            <div class="font-medium">
+              {{ entity.annotation?.documentation || entity.name }}
+            </div>
+            <div class="text-sm text-gray-600">Тип: {{ entity.type }}</div>
+            <div class="text-xs text-gray-500 mt-1">
+              Привязан к KSI: {{ entity.data.EntityID?.KSIUIN || "Нет" }}
+            </div>
+          </button>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button
+            @click="showEntitySelector = false"
+            class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showPropertySelector"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div
+        class="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto"
+      >
+        <h3 class="text-lg font-semibold mb-4">Выберите Property</h3>
+        <div class="space-y-2">
+          <button
+            v-for="property in mockProperties"
+            :key="property.id"
+            @click="selectProperty(property)"
+            class="w-full text-left p-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          >
+            <div class="font-medium">
+              {{ property.annotation?.documentation || property.name }}
+            </div>
+            <div class="text-sm text-gray-600">Тип: {{ property.type }}</div>
+            <div class="text-xs text-gray-500 mt-1">
+              Привязан к KSI: {{ property.data.PropertyID?.KSIUIN || "Нет" }}
+            </div>
+          </button>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button
+            @click="showPropertySelector = false"
+            class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, inject } from 'vue';
-import ComplexTypeSelector from '@/components/ComplexTypeSelector.vue';
-import ComplexTypeDisplay from '@/components/ComplexTypeDisplay.vue';
+import { computed, nextTick, ref, inject, watch } from "vue";
+import ComplexTypeInstanceView from "@/components/ComplexTypeInstanceView.vue";
+import type { ComplexTypeInstance, XSDSchema } from "@/types";
+import {
+  isComplexType,
+  canRemoveItem,
+  isKSIIdentificationField,
+  getInputType,
+  generateDefaultUid,
+  decodeHTMLEntities,
+  getReqElementType as getReqElementTypeUtil,
+  isReqElementExtension as isReqElementExtensionUtil,
+} from "@/utils/xsdUtils";
 
 interface Props {
   element: any;
   level: number;
   parentPath?: string;
-  complexTypesStore?: any;
+  currentEntityPath?: string;
 }
 
 interface Emits {
-  (e: 'update-value', path: string, value: any): void;
-  (e: 'add-item', path: string, itemType: 'Entity' | 'Relation' | 'Property'): void;
+  (e: "update-value", path: string, value: any): void;
+  (e: "add-entity", path: string, entityData: any): void;
+  (e: "add-property", path: string, propertyData: any): void;
+  (e: "add-relation", path: string): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const schema = inject('schema', { complexTypes: null });
+const schema: Partial<XSDSchema> = inject("schema", {});
+const mockData: { [key: string]: ComplexTypeInstance[] } = inject(
+  "mockData",
+  {}
+);
 
 const isExpanded = ref(true);
+const selectedComplexTypeId = ref("");
+const showEntitySelector = ref(false);
+const showPropertySelector = ref(false);
 
-// Вычисляемый путь к элементу
+const mockEntities = computed(() => {
+  return mockData.Entities || [];
+});
+
+const mockProperties = computed(() => {
+  return mockData.Properties || [];
+});
+
+const isReqElementExtension = computed(() => {
+  return isReqElementExtensionUtil(props.element);
+});
+
+const reqElementType = computed(() =>
+  getReqElementTypeUtil(props.element.name)
+);
+const defaultUid = computed(() => generateDefaultUid(props.element.name));
+const reqElementUid = computed(() => {
+  if (!props.element.value?.attributes?.ReqElementUId) {
+    return defaultUid.value;
+  }
+  return props.element.value.attributes.ReqElementUId;
+});
+
+const getReqElementFieldValue = (fieldName: string): any => {
+  if (!props.element.value || typeof props.element.value !== "object")
+    return "";
+  return props.element.value[fieldName] || "";
+};
+
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
 });
 
-const isComplexType = (type: string): boolean => {
-  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
-  return complexTypes.includes(type);
-};
-
-// Проверка наличия значения complexType
 const hasComplexTypeValue = computed(() => {
-  return props.element.value && typeof props.element.value === 'object' && Object.keys(props.element.value).length > 0;
+  return (
+    props.element.value &&
+    typeof props.element.value === "object" &&
+    Object.keys(props.element.value).length > 0
+  );
 });
 
-// Получение определения complexType
-const getComplexTypeDefinition = (typeName: string) => {
-  return schema?.complexTypes?.[typeName];
-};
+const availableMockInstances = computed(() => {
+  if (!props.element.type) return [];
+  return mockData[props.element.type as keyof typeof mockData] || [];
+});
 
-// Обработка выбора complexType
-const onComplexTypeSelected = (instance: any) => {
-  const path = currentPath.value;
-  console.log('Complex type selected for path:', path, instance);
-  
-  // Сохраняем данные complexType
-  if (instance && instance.data) {
-    emit('update-value', path, instance.data);
+const isEntitiesOrPropertiesOrRelations = computed(() => {
+  return ["Entities", "Properties", "Relations"].includes(props.element.name);
+});
+
+const onComplexTypeSelected = () => {
+  if (!selectedComplexTypeId.value) return;
+
+  const instance = availableMockInstances.value.find(
+    (inst: ComplexTypeInstance) => inst.id === selectedComplexTypeId.value
+  );
+
+  if (instance) {
+    emit("update-value", currentPath.value, instance.data);
   }
 };
 
-// Очистка complexType
 const clearComplexType = () => {
-  const path = currentPath.value;
-  emit('update-value', path, null);
+  if (isKSIIdentificationField(props.element)) return;
+
+  selectedComplexTypeId.value = "";
+  emit("update-value", currentPath.value, null);
 };
 
-// Переключение состояния раскрытия/скрытия
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value;
 };
 
-// Получение типа элемента на основе имени
-const getItemType = (): 'Entity' | 'Relation' | 'Property' => {
-  if (props.element.name === 'Entities') return 'Entity';
-  if (props.element.name === 'Relations') return 'Relation';
-  if (props.element.name === 'Properties') return 'Property';
-  return 'Entity'; // fallback
-};
-
-// Получение отображаемого имени для кнопки
-const getItemTypeDisplayName = (elementName: string): string => {
-  const typeMap: { [key: string]: string } = {
-    'Entities': 'Entity',
-    'Relations': 'Relation',
-    'Properties': 'Property'
-  };
-  return typeMap[elementName] || elementName;
-};
-
-// Проверка, является ли элемент коллекцией (Entities, Relations, Properties)
-const isCollectionElement = (elementName: string): boolean => {
-  return ['Entities', 'Relations', 'Properties'].includes(elementName);
-};
-
-// Получение пути для элемента
 const getItemPath = (key: string): string => {
   return `${currentPath.value}.${key}`;
 };
 
-// Получение текущего значения элемента
 const getElementValue = (): any => {
-  return props.element.value || '';
+  return props.element.value || "";
 };
 
-// Определение типа input на основе типа XSD
-const getInputType = (xsdType: string | undefined): string => {
-  if (!xsdType) return 'text';
-
-  const typeMap: { [key: string]: string } = {
-    'xs:string': 'text',
-    'xs:integer': 'number',
-    'xs:decimal': 'number',
-    'xs:float': 'number',
-    'xs:double': 'number',
-    'xs:boolean': 'checkbox',
-    'xs:date': 'date',
-    'xs:dateTime': 'datetime-local',
-    'xs:time': 'time',
-  };
-
-  return typeMap[xsdType] || 'text';
+const getComplexTypeDefinition = (typeName: string) => {
+  return schema?.complexTypes?.[typeName];
 };
 
-// Обработка изменения input
 const handleInputChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
   let value: any = target.value;
 
-  if (target.type === 'number') {
+  if (target.type === "number") {
     value = target.valueAsNumber || target.value;
-  } else if (target.type === 'checkbox') {
+  } else if (target.type === "checkbox") {
     value = target.checked;
   }
 
-  console.log(`Updating value for ${currentPath.value}:`, value);
-  emit('update-value', currentPath.value, value);
+  emit("update-value", currentPath.value, value);
 };
 
-// Обработка обновления от дочерних элементов
 const handleChildUpdate = (path: string, value: any) => {
-  emit('update-value', path, value);
+  emit("update-value", path, value);
 };
 
-// Обработка добавления нового Entity/Relation/Property
-const handleAddItem = async () => {
-  await nextTick();
-  const itemType = getItemType();
-  console.log('Adding item with type:', itemType, 'at path:', currentPath.value);
-  emit('add-item', currentPath.value, itemType);
-};
-
-// Обработка добавления от дочерних элементов
-const handleChildAddItem = async (path: string, itemType: 'Entity' | 'Relation' | 'Property') => {
-  await nextTick();
-  console.log('Child adding item with type:', itemType, 'at path:', path);
-  emit('add-item', path, itemType);
-};
-
-// Получение индекса элемента по ключу
-const getItemIndex = (key: string): number => {
-  if (!props.element.complexType?.sequence) return 0;
-  
-  const keys = Object.keys(props.element.complexType.sequence);
-  return keys.indexOf(key);
-};
-
-// Проверка, является ли элемент шаблонным (первым в списке)
-const isTemplateItem = (elementName: string, key: string): boolean => {
-  const templateKeys: { [key: string]: string } = {
-    'Entities': 'Entity',
-    'Relations': 'Relation',
-    'Properties': 'Property'
+const onReqElementTypeChange = (event: Event) => {
+  const value = (event.target as HTMLSelectElement).value;
+  const currentValue = props.element.value || {};
+  const updatedValue = {
+    ...currentValue,
+    attributes: {
+      ...currentValue.attributes,
+      ReqElementType: value,
+    },
   };
-  return key.startsWith(templateKeys[elementName] as string);
+
+  emit("update-value", currentPath.value, updatedValue);
 };
 
-// Проверка, можно ли удалить элемент
-const canRemoveItem = (elementName: string, key: string): boolean => {
-  const index = getItemIndex(key);
-  const prefixMap: { [key: string]: string } = {
-    'Entities': 'Entity_',
-    'Relations': 'Relation_',
-    'Properties': 'Property_'
+const onReqElementUidChange = (event: Event) => {
+  const value = (event.target as HTMLInputElement).value;
+  const currentValue = props.element.value || {};
+  const updatedValue = {
+    ...currentValue,
+    attributes: {
+      ...currentValue.attributes,
+      ReqElementUId: value,
+    },
   };
-  
-  return !!(index > 0 &&
-         prefixMap[elementName] &&
-         key.startsWith(prefixMap[elementName]));
+
+  emit("update-value", currentPath.value, updatedValue);
 };
 
-// Удаление элемента
+const onReqElementFieldChange = (fieldName: string, event: Event) => {
+  const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
+  const currentValue = props.element.value || {};
+  const updatedValue = {
+    ...currentValue,
+    [fieldName]: decodeHTMLEntities(value),
+  };
+
+  emit("update-value", currentPath.value, updatedValue);
+};
+
+const selectEntity = (entity: ComplexTypeInstance) => {
+  showEntitySelector.value = false;
+  emit("add-entity", currentPath.value, entity);
+};
+
+const selectProperty = (property: ComplexTypeInstance) => {
+  showPropertySelector.value = false;
+  emit("add-property", currentPath.value, property);
+};
+
+function handleAddElement(name: string) {
+  if (name === "Entities") {
+    showEntitySelector.value = true;
+  } else if (name === "Properties" && props.currentEntityPath) {
+    showPropertySelector.value = true;
+  } else if (name === "Relations") {
+    handleAddRelation();
+  }
+}
+
+const handleAddRelation = async () => {
+  await nextTick();
+  emit("add-relation", currentPath.value);
+};
+
+const handleChildAddEntity = (
+  path: string,
+  entityData: ComplexTypeInstance
+) => {
+  emit("add-entity", path, entityData);
+};
+
+const handleChildAddProperty = (
+  path: string,
+  propertyData: ComplexTypeInstance
+) => {
+  emit("add-property", path, propertyData);
+};
+
+const handleChildAddRelation = (path: string) => {
+  emit("add-relation", path);
+};
+
 const removeItem = (key: string) => {
-  const prefixMap: { [key: string]: string } = {
-    'Entities': 'Entity_',
-    'Relations': 'Relation_',
-    'Properties': 'Property_'
-  };
-  
-  const prefix = prefixMap[props.element.name];
-  
-  if (props.element.complexType?.sequence && 
-      props.element.complexType.sequence[key] &&
-      prefix &&
-      key.startsWith(prefix)) {
+  const item = props.element.complexType?.sequence?.[key];
+  if (item && canRemoveItem(item.name) && !isKSIIdentificationField(item)) {
     delete props.element.complexType.sequence[key];
   }
 };
+
+watch(
+  () => props.element.value,
+  (newValue) => {
+    if (newValue && props.element.type && isComplexType(props.element.type)) {
+      const instances = availableMockInstances.value;
+      const matchingInstance = instances.find((inst: ComplexTypeInstance) => {
+        return JSON.stringify(inst.data) === JSON.stringify(newValue);
+      });
+
+      if (matchingInstance) {
+        selectedComplexTypeId.value = matchingInstance.id;
+      }
+    }
+  },
+  { immediate: true }
+);
 </script>

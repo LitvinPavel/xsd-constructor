@@ -1,11 +1,5 @@
-export interface XSDSchema {
-  schemaInfo: {
-    elementFormDefault?: string;
-    attributeFormDefault?: string;
-  };
-  elements: XSDElement[];
-  complexTypes: { [key: string]: XSDComplexType };
-  simpleTypes: XSDSimpleType[];
+export interface XSDAnnotation {
+  documentation: string;
 }
 
 export interface XSDElement {
@@ -16,31 +10,34 @@ export interface XSDElement {
   annotation?: XSDAnnotation;
   complexType?: XSDComplexType;
   simpleType?: XSDSimpleType;
+  value?: any;
 }
 
 export interface XSDComplexType {
-  name: string;
+  name?: string;
   annotation?: XSDAnnotation;
-  sequence?: XSDElement[];
-  all?: XSDElement[];
+  sequence?: { [key: string]: XSDElement };
+  all?: { [key: string]: XSDElement };
   choice?: XSDChoice;
-  attributes?: XSDAttribute[];
+  attributes?: { [key: string]: XSDAttribute };
   complexContent?: XSDComplexContent;
 }
 
 export interface XSDComplexContent {
   extension: {
     base: string;
-    attributes?: XSDAttribute[];
+    attributes?: { [key: string]: XSDAttribute };
+    sequence?: { [key: string]: XSDElement };
   };
 }
 
 export interface XSDChoice {
-  elements: XSDElement[];
+  elements: { [key: string]: XSDElement };
+  annotation?: XSDAnnotation;
 }
 
 export interface XSDSimpleType {
-  name: string;
+  name?: string;
   restriction: {
     base: string;
     enumerations?: XSDEnumeration[];
@@ -54,10 +51,7 @@ export interface XSDAttribute {
   use: string;
   annotation?: XSDAnnotation;
   simpleType?: XSDSimpleType;
-}
-
-export interface XSDAnnotation {
-  documentation: string;
+  value?: any;
 }
 
 export interface XSDEnumeration {
@@ -65,12 +59,21 @@ export interface XSDEnumeration {
   annotation?: XSDAnnotation;
 }
 
-export interface FormField {
+export interface XSDSchema {
+  elements: { [key: string]: XSDElement };
+  complexTypes: { [key: string]: XSDComplexType };
+  simpleTypes: { [key: string]: XSDSimpleType };
+  entityStructur: Partial<XSDElement>,
+  propertyStructur: Partial<XSDElement>,
+  relationStructur: Partial<XSDElement>
+}
+
+export interface ComplexTypeInstance {
+  id: string;
   name: string;
-  fullName: string;
   type: string;
-  label: string;
-  required: boolean;
-  value: any;
-  options?: string[]; // для enumerations
+  data: any;
+  annotation?: {
+    documentation: string;
+  };
 }

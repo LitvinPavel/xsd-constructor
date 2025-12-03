@@ -1,3 +1,4 @@
+<!-- XSDForm.vue - добавим обработку добавления Relation -->
 <template>
   <div class="max-w-full mx-auto">
     <!-- Контрол загрузки файла -->
@@ -10,36 +11,8 @@
       />
     </div>
 
-    <!-- Переключатель между основной формой и формой сложных типов -->
-    <div class="mb-6">
-      <div class="flex border-b">
-        <button
-          @click="activeTab = 'main'"
-          :class="[
-            'px-4 py-2 font-medium',
-            activeTab === 'main' 
-              ? 'border-b-2 border-blue-500 text-blue-600' 
-              : 'text-gray-500 hover:text-gray-700'
-          ]"
-        >
-          Основная форма
-        </button>
-        <button
-          @click="activeTab = 'complexTypes'"
-          :class="[
-            'px-4 py-2 font-medium',
-            activeTab === 'complexTypes' 
-              ? 'border-b-2 border-blue-500 text-blue-600' 
-              : 'text-gray-500 hover:text-gray-700'
-          ]"
-        >
-          Сложные типы
-        </button>
-      </div>
-    </div>
-
     <!-- Основная форма -->
-    <div v-if="activeTab === 'main' && Object.keys(schema.elements).length > 0">
+    <div v-if="Object.keys(schema.elements).length > 0">
       <form @submit.prevent.stop>
         <!-- Рендеринг элементов -->
         <div
@@ -51,7 +24,9 @@
             :element="element"
             :level="0"
             @update-value="updateElementValue"
-            @add-item="handleAddItem"
+            @add-entity="handleAddEntity"
+            @add-property="handleAddProperty"
+            @add-relation="handleAddRelation"
           />
         </div>
 
@@ -67,12 +42,9 @@
       </form>
     </div>
 
-    <!-- Форма сложных типов -->
-    <div v-if="activeTab === 'complexTypes'">
-      <ComplexTypeForm
-        :schema="schema"
-        @instance-created="handleComplexTypeCreated"
-      />
+    <!-- Сообщение если схема не загружена -->
+    <div v-else class="text-center py-12 text-gray-500">
+      Загрузите XSD схему для начала работы
     </div>
 
     <!-- Результат XML -->
@@ -89,18 +61,18 @@
 import { ref, provide } from 'vue';
 import { useForm } from '@/composables/useForm';
 import XSDGroup from '@/components/XSDGroup.vue';
-import ComplexTypeForm from '@/components/ComplexTypeForm.vue';
 
-const { schema, generatedXML, generateXML, handleFileUpload, updateElementValue, handleAddItem } = useForm();
-
-const activeTab = ref('main');
+const { 
+  schema, 
+  generatedXML, 
+  generateXML, 
+  handleFileUpload, 
+  updateElementValue, 
+  handleAddEntity, 
+  handleAddProperty,
+  handleAddRelation 
+} = useForm();
 
 // Предоставляем схему для дочерних компонентов
 provide('schema', schema);
-
-const handleComplexTypeCreated = (instance: any) => {
-  console.log('Создан сложный тип:', instance);
-  // Можно добавить логику для автоматического переключения на основную форму
-  // или заполнения соответствующих полей
-};
 </script>

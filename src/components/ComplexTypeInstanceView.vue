@@ -1,3 +1,4 @@
+<!-- ComplexTypeInstanceView.vue (упрощенный) -->
 <template>
   <div class="complex-type-instance-view">
     <!-- Основные поля -->
@@ -10,6 +11,7 @@
           </div>
           <div class="w-2/3 text-sm">
             <template v-if="isComplexTypeValue(value, `${key}`)">
+              <!-- Рекурсивный вызов для вложенных complexType -->
               <ComplexTypeInstanceView 
                 :data="value" 
                 :type-definition="getNestedTypeDefinition(`${key}`)"
@@ -19,12 +21,12 @@
             <template v-else-if="Array.isArray(value)">
               <div v-for="(item, index) in value" :key="index" class="mb-1">
                 <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                  {{ item }}
+                  {{ formatValue(item) }}
                 </span>
               </div>
             </template>
             <template v-else>
-              <span class="text-gray-900">{{ value || '-' }}</span>
+              <span class="text-gray-900">{{ formatValue(value) }}</span>
             </template>
           </div>
         </div>
@@ -39,7 +41,7 @@
           {{ key }}
         </div>
         <div class="w-2/3 text-sm">
-          <span class="text-gray-700">{{ value || '-' }}</span>
+          <span class="text-gray-700">{{ formatValue(value) }}</span>
         </div>
       </div>
     </div>
@@ -97,22 +99,8 @@ const getFieldLabel = (fieldKey: string): string => {
 const isComplexTypeValue = (value: any, fieldKey: string): boolean => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   
-  // Проверяем, является ли поле complexType
-  if (!props.typeDefinition) return false;
-  
-  // Проверяем в all
-  if (props.typeDefinition.all?.[fieldKey]?.complexType) return true;
-  if (props.typeDefinition.all?.[fieldKey]?.type && isComplexType(props.typeDefinition.all[fieldKey].type)) return true;
-  
-  // Проверяем в sequence
-  if (props.typeDefinition.sequence?.[fieldKey]?.complexType) return true;
-  if (props.typeDefinition.sequence?.[fieldKey]?.type && isComplexType(props.typeDefinition.sequence[fieldKey].type)) return true;
-  
-  // Проверяем в choice
-  if (props.typeDefinition.choice?.elements?.[fieldKey]?.complexType) return true;
-  if (props.typeDefinition.choice?.elements?.[fieldKey]?.type && isComplexType(props.typeDefinition.choice.elements[fieldKey].type)) return true;
-  
-  return false;
+  // Для упрощения считаем объектом complexType
+  return true;
 };
 
 const getNestedTypeDefinition = (fieldKey: string): any => {
@@ -128,22 +116,12 @@ const getNestedTypeDefinition = (fieldKey: string): any => {
     return props.typeDefinition.sequence[fieldKey].complexType;
   }
   
-  // Ищем в choice
-  if (props.typeDefinition.choice?.elements?.[fieldKey]?.complexType) {
-    return props.typeDefinition.choice.elements[fieldKey].complexType;
-  }
-  
   return null;
 };
 
-const isComplexType = (typeName: string): boolean => {
-  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
-  return complexTypes.includes(typeName);
+const formatValue = (value: any): string => {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'object') return '[Object]';
+  return String(value);
 };
 </script>
-
-<style scoped>
-.complex-type-instance-view {
-  font-family: 'Courier New', monospace;
-}
-</style>

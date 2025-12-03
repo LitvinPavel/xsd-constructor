@@ -1,418 +1,427 @@
+// composables/useForm.ts
 import { ref, reactive, nextTick } from 'vue';
-import { XSDParser } from '../utils/xsdParser';
-import {
-  generateXMLWithValidation,
-  getSchemaInfo,
-} from '../utils/xmlGenerator';
-
-interface XSDSchema {
-  elements: { [key: string]: any };
-  complexTypes: { [key: string]: any };
-  simpleTypes: { [key: string]: any };
-}
-
-interface ComplexTypeInstance {
-  type: string;
-  data: any;
-}
+import { XSDParser } from '@/utils/xsdParser';
+import { generateXMLWithValidation } from '@/utils/xmlGenerator';
+import { deepCopyElement, getNestedValue } from '@/utils/xsdUtils';
+import type { XSDSchema } from '@/types';
 
 export function useForm() {
-// Реактивные данные
-const schema = reactive<XSDSchema>({
-  elements: {},
-  complexTypes: {},
-  simpleTypes: {},
-});
-
-const generatedXML = ref<string>('');
-const complexTypesStore = ref<ComplexTypeInstance[]>([]);
-
-// Хранилище значений элементов
-const elementValues = reactive<{ [path: string]: any }>({});
-
-// Функция чтения файла
-const readFileContent = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) =>
-      resolve((e.target?.result as string) || '');
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
+  const schema = reactive<XSDSchema>({
+    elements: {},
+    complexTypes: {},
+    simpleTypes: {},
+    entityStructur: {},
+    propertyStructur: {},
+    relationStructur: {}
   });
-};
 
-// Обработка загрузки файла
-const handleFileUpload = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (file) {
-    try {
-      const content = await readFileContent(file);
-      parseXSD(content);
-    } catch (error) {
-      console.error('Error reading file:', error);
-    }
-  }
-};
+  const generatedXML = ref<string>('');
+  const elementValues = reactive<{ [path: string]: any }>({});
 
-// Парсинг XSD
-const parseXSD = (xsdContent: string): void => {
-  const parser = new XSDParser();
-  const parsedSchema = parser.parseXSDToJSON(xsdContent);
-  
-  // Получаем структурированные определения complexTypes
-  const complexTypeDefinitions = parser.getComplexTypeDefinitions(
-    parser['parser'].parse(xsdContent) // Используем сырые данные парсера
-  );
+  const readFileContent = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) =>
+        resolve((e.target?.result as string) || '');
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
 
-  // Очищаем предыдущие значения
-  Object.keys(schema.elements).forEach(key => delete schema.elements[key]);
-  Object.keys(schema.complexTypes).forEach(key => delete schema.complexTypes[key]);
-  Object.keys(schema.simpleTypes).forEach(key => delete schema.simpleTypes[key]);
-  Object.keys(elementValues).forEach(key => delete elementValues[key]);
-
-  // Копируем новые данные
-  Object.assign(schema, parsedSchema);
-  
-  // Добавляем структурированные complexTypes
-  Object.assign(schema.complexTypes, complexTypeDefinitions);
-
-  // Инициализируем значения для ВСЕХ элементов
-  initializeElementValues(schema.elements);
-
-  console.log('Parsed schema with complexTypes:', schema.complexTypes);
-};
-
-// Инициализация структуры значений элементов
-const initializeElementValues = (
-  elements: { [key: string]: any },
-  parentPath: string = ''
-) => {
-  Object.entries(elements).forEach(([key, element]) => {
-    const currentPath = parentPath ? `${parentPath}.${key}` : key;
-
-    // Инициализируем значение для простых элементов
-    if (element.type || element.simpleType) {
-      elementValues[currentPath] = element.value || '';
-    }
-
-    // Рекурсивно инициализируем для вложенных элементов
-    if (element.complexType?.sequence) {
-      initializeElementValues(element.complexType.sequence, currentPath);
-    }
-    if (element.complexType?.all) {
-      initializeElementValues(element.complexType.all, currentPath);
-    }
-    if (element.complexType?.choice?.elements) {
-      initializeElementValues(element.complexType.choice.elements, currentPath);
-    }
-  });
-};
-
-// Обновление значения элемента
-const updateElementValue = (elementPath: string, value: any) => {
-  console.log('Updating element value:', elementPath, value);
-
-  // Если значение - complexType, сохраняем его полностью
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    // Проверяем, является ли это complexType
-    const targetElement = findElementByPath(schema.elements, elementPath);
-    if (targetElement && targetElement.type && isComplexType(targetElement.type)) {
-      console.log('Saving complex type:', targetElement.type, value);
-    }
-  }
-
-  // Сохраняем значение в хранилище
-  elementValues[elementPath] = value;
-
-  // Также обновляем значение в самом элементе schema
-  updateSchemaElementValue(schema.elements, elementPath, value);
-};
-
-// Добавим функцию проверки complexType
-const isComplexType = (typeName: string): boolean => {
-  const complexTypes = ['KSIIdentification', 'Condition', 'Organization', 'Link', 'ReqElement'];
-  return complexTypes.includes(typeName);
-};
-
-// Обновим функцию синхронизации значений
-const syncValuesToSchema = () => {
-  Object.entries(elementValues).forEach(([path, value]) => {
-    // Если значение - complexType объект, сохраняем его как есть
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      const targetElement = findElementByPath(schema.elements, path);
-      if (targetElement && targetElement.type && isComplexType(targetElement.type)) {
-        // Для complexType сохраняем объект полностью
-        updateSchemaElementValue(schema.elements, path, value);
-        return;
+  const handleFileUpload = async (event: Event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) {
+      try {
+        const content = await readFileContent(file);
+        parseXSD(content);
+      } catch (error) {
+        console.error('Error reading file:', error);
       }
+    }
+  };
+
+  const parseXSD = (xsdContent: string): void => {
+    const parser = new XSDParser();
+    const parsedSchema = parser.parseXSDToJSON(xsdContent);
+    const complexTypeDefinitions = parser.getComplexTypeDefinitions(
+      parser['parser'].parse(xsdContent)
+    );
+    const get = (path: string) => deepCopyElement(getNestedValue(schema, path));
+
+    Object.keys(schema.elements).forEach(key => delete schema.elements[key]);
+    Object.keys(schema.complexTypes).forEach(key => delete schema.complexTypes[key]);
+    Object.keys(schema.simpleTypes).forEach(key => delete schema.simpleTypes[key]);
+    Object.keys(elementValues).forEach(key => delete elementValues[key]);
+
+    Object.assign(schema, parsedSchema);
+    Object.assign(schema.complexTypes, complexTypeDefinitions);
+    Object.assign(schema, {
+      entityStructur: get('elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.Entities.complexType.sequence.Entity'),
+      propertyStructur: get('elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.Entities.complexType.sequence.Entity.complexType.sequence.Properties.complexType.sequence.Property'),
+      relationStructur: get('elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.Relations.complexType.sequence.Relation')
+    })
+
+    removeDefaultDMODELElements();
+    initializeElementValues(schema.elements);
+  };
+
+  const removeDefaultDMODELElements = () => {
+    const removeFromSequence = (sequence: any) => {
+      if (!sequence) return;
+      
+      Object.keys(sequence).forEach(key => {
+        if (key === 'Entity' || key === 'Property' || key === 'Relation') {
+          delete sequence[key];
+        }
+      });
+    };
+
+    const processElement = (element: any) => {
+      if (element.complexType?.sequence) {
+        removeFromSequence(element.complexType.sequence);
+        Object.values(element.complexType.sequence).forEach((child: any) => {
+          processElement(child);
+        });
+      }
+      
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        removeFromSequence(element.complexType.complexContent.extension.sequence);
+        Object.values(element.complexType.complexContent.extension.sequence).forEach((child: any) => {
+          processElement(child);
+        });
+      }
+    };
+
+    Object.values(schema.elements).forEach(processElement);
+  };
+
+  const updateElementValue = (elementPath: string, value: any) => {
+    console.log('Updating element value:', elementPath, value);
+    elementValues[elementPath] = value;
+    updateSchemaElementValue(schema.elements, elementPath, value);
+  };
+
+  const updateSchemaElementValue = (
+    elements: { [key: string]: any },
+    path: string,
+    value: any
+  ): boolean => {
+    const pathParts = path.split('.');
+    const currentKey = pathParts[0] as string;
+    const remainingPath = pathParts.slice(1).join('.');
+
+    if (elements[currentKey]) {
+      if (remainingPath === '') {
+        elements[currentKey].value = value;
+        return true;
+      } else {
+        const element = elements[currentKey];
+
+        if (element.complexType?.complexContent?.extension?.sequence) {
+          const found = updateSchemaElementValue(
+            element.complexType.complexContent.extension.sequence,
+            remainingPath,
+            value
+          );
+          if (found) return true;
+        }
+
+        if (element.complexType?.sequence) {
+          return updateSchemaElementValue(
+            element.complexType.sequence,
+            remainingPath,
+            value
+          );
+        }
+        if (element.complexType?.all) {
+          return updateSchemaElementValue(
+            element.complexType.all,
+            remainingPath,
+            value
+          );
+        }
+        if (element.complexType?.choice?.elements) {
+          return updateSchemaElementValue(
+            element.complexType.choice.elements,
+            remainingPath,
+            value
+          );
+        }
+      }
+    }
+    return false;
+  };
+
+  const initializeElementValues = (
+    elements: { [key: string]: any },
+    parentPath: string = ''
+  ) => {
+    Object.entries(elements).forEach(([key, element]) => {
+      const currentPath = parentPath ? `${parentPath}.${key}` : key;
+
+      if (element.complexType?.complexContent?.extension?.base === 'ReqElement') {
+        if (!element.value || typeof element.value !== 'object') {
+          element.value = {
+            attributes: {},
+            ReqElementData: '',
+            ReqElementNumber: '',
+            ReqElementName: '',
+            ReqElementLink: '',
+            ReqElementNotes: ''
+          };
+        }
+        
+        if (!element.value.attributes) {
+          element.value.attributes = {};
+        }
+        
+        if (element.name === 'GraphElement') {
+          element.value.attributes.ReqElementType = 'графическое изображение';
+        } else if (element.name === 'TableElement') {
+          element.value.attributes.ReqElementType = 'таблица';
+        } else if (element.name === 'FormulaElement') {
+          element.value.attributes.ReqElementType = 'формульная запись';
+        }
+        
+        if (!element.value.attributes.ReqElementUId) {
+          element.value.attributes.ReqElementUId = generateReqElementUid(element.name);
+        }
+        
+        elementValues[currentPath] = element.value;
+      } else if (element.value !== undefined) {
+        elementValues[currentPath] = element.value;
+      }
+
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        initializeElementValues(element.complexType.complexContent.extension.sequence, currentPath);
+      }
+      
+      if (element.complexType?.sequence) {
+        initializeElementValues(element.complexType.sequence, currentPath);
+      }
+      if (element.complexType?.all) {
+        initializeElementValues(element.complexType.all, currentPath);
+      }
+      if (element.complexType?.choice?.elements) {
+        initializeElementValues(element.complexType.choice.elements, currentPath);
+      }
+    });
+  };
+
+  const generateReqElementUid = (elementName: string): string => {
+    const prefixMap: { [key: string]: string } = {
+      'GraphElement': 'Graph',
+      'TableElement': 'Table',
+      'FormulaElement': 'Formula'
+    };
+    
+    const prefix = prefixMap[elementName] || 'Element';
+    return `${prefix}${Math.floor(Math.random() * 1000)}`;
+  };
+
+  const handleAddEntity = async (elementPath: string, entity: any) => {
+    await nextTick();
+    const targetElement = findElementByPath(schema.elements, elementPath);
+
+    if (targetElement && targetElement.complexType?.sequence) {
+      const { EntityID, EntityName, EntityUid, Properties } = schema.entityStructur?.complexType?.sequence || {};
+    const newKey = `Entity_${Date.now()}`;
+    const newItem = {
+      name: 'Entity',
+      annotation: entity.annotation,
+      complexType: {
+        sequence: {
+          EntityUid: {
+            ...EntityUid,
+            value: entity.data.EntityUid || `Object${Date.now()}`
+          },
+          EntityName: {
+            ...EntityName,
+            value: entity.data.EntityName || 'Новая сущность'
+          },
+          EntityID: {
+            ...EntityID,
+            value: entity.data.EntityID
+          },
+          Properties: {
+            ...Properties,
+            complexType: { sequence: {} }
+          }
+        }
+      }
+    };
+    targetElement.complexType.sequence[newKey] = newItem;
+    initializeElementValues({ [newKey]: newItem }, elementPath);
     }
     
-    // Для обычных значений используем стандартную логику
-    updateSchemaElementValue(schema.elements, path, value);
-  });
-};
+  };
 
-// Рекурсивное обновление значения в структуре schema
-const updateSchemaElementValue = (
-  elements: { [key: string]: any },
-  path: string,
-  value: any
-): boolean => {
-  const pathParts = path.split('.');
-  const currentKey = pathParts[0] as string;
-  const remainingPath = pathParts.slice(1).join('.');
+  const handleAddProperty = async (elementPath: string, property: any) => {
+    await nextTick();
 
-  if (elements[currentKey]) {
-    if (remainingPath === '') {
-      // Нашли целевой элемент - обновляем значение
-      elements[currentKey].value = value;
-      return true;
-    } else {
-      // Продолжаем поиск во вложенных элементах
-      const element = elements[currentKey];
+    const targetElement = findElementByPath(schema.elements, elementPath);
 
-      if (element.complexType?.sequence) {
-        return updateSchemaElementValue(
-          element.complexType.sequence,
-          remainingPath,
-          value
-        );
-      }
-      if (element.complexType?.all) {
-        return updateSchemaElementValue(
-          element.complexType.all,
-          remainingPath,
-          value
-        );
-      }
-      if (element.complexType?.choice?.elements) {
-        return updateSchemaElementValue(
-          element.complexType.choice.elements,
-          remainingPath,
-          value
-        );
-      }
-    }
-  }
-  return false;
-};
+    if (targetElement && targetElement.complexType?.sequence) {
+      const newKey = `Property_${Date.now()}`;
+      const { PropertyID, PropertyName, PropertyUid, PropertyCond } = schema.propertyStructur?.complexType?.sequence || {};
+      const newItem = {
+        name: 'Property',
+        annotation: property.annotation,
+        complexType: {
+          sequence: {
+            PropertyUid: {
+              ...PropertyUid,
+              value: property.data.PropertyUid || newKey
+            },
+            PropertyName: {
+              ...PropertyName,
+              value: property.data.PropertyName || 'Новое свойство'
+            },
+            PropertyID: {
+              ...PropertyID,
+              value: property.data.PropertyID
+            },
+            PropertyCond: {
+              ...PropertyCond,
+              value: property.data.PropertyCond || []
+            }
+          }
+        }
+      };
 
-// Добавление нового Entity, Relation или Property
-const handleAddItem = async (
-  elementPath: string,
-  itemType: 'Entity' | 'Relation' | 'Property'
-) => {
-  await nextTick();
-
-  console.log(`Adding new ${itemType} at path: ${elementPath}`);
-
-  const targetElement = findElementByPath(schema.elements, elementPath);
-
-  if (targetElement && targetElement.complexType?.sequence) {
-    console.log('Found target element:', targetElement);
-
-    // Используем первый элемент как шаблон
-    const templateKey = Object.keys(targetElement.complexType.sequence)[0] as string;
-    const templateElement = targetElement.complexType.sequence[templateKey];
-
-    if (templateElement && templateElement.name === itemType) {
-      console.log('Found template element:', templateElement);
-
-      const newItem = deepCopyElement(templateElement);
-      clearElementValues(newItem);
-      generateUniqueIds(newItem, itemType);
-
-      // Генерируем уникальный ключ для нового элемента
-      const newKey = `${itemType}_${Date.now()}`;
-      
-      // Добавляем новый элемент в sequence
       targetElement.complexType.sequence[newKey] = newItem;
-
-      // Инициализируем значения для нового элемента
       initializeElementValues({ [newKey]: newItem }, elementPath);
+    }
+  };
 
-      console.log(`Added new ${itemType}:`, newItem);
-      console.log('Current sequence:', targetElement.complexType.sequence);
-    } else {
-      console.error(
-        `Template element ${itemType} not found in sequence:`,
-        templateElement
+  const handleAddRelation = async (elementPath: string) => {
+    await nextTick();
+
+
+    const targetElement = findElementByPath(schema.elements, elementPath);
+
+    if (targetElement && targetElement.complexType?.sequence) {
+      const newKey = `Relation_${Date.now()}`;
+      const newItem = {
+        ...schema.relationStructur,
+        complexType: {
+          ...schema.relationStructur.complexType,
+          sequence: {
+            ...schema.relationStructur.complexType?.sequence,
+            RelationUid: {
+              ...schema.relationStructur.complexType?.sequence?.RelationUid,
+              value: newKey
+            }
+          }
+        }
+      };
+      targetElement.complexType.sequence[newKey] = newItem;
+      initializeElementValues({ [newKey]: newItem }, elementPath);
+    }
+  };
+
+  const generateUniqueIds = (element: any, itemType: string) => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+
+    const generateId = (pattern: string): string => {
+      if (pattern.includes('Object([0-9])+')) {
+        return `Object${timestamp}${random}`;
+      } else if (pattern.includes('Relation([0-9]+)')) {
+        return `Relation${timestamp}${random}`;
+      } else if (pattern.includes('Property([0-9])+')) {
+        return `Property${timestamp}${random}`;
+      } else if (pattern.includes('Condition([0-9]+)')) {
+        return `Condition${timestamp}${random}`;
+      }
+      return `${itemType}${timestamp}${random}`;
+    };
+
+    if (
+      element.simpleType?.restriction?.pattern &&
+      (element.name === 'EntityUid' || element.name === 'RelationUid' || 
+       element.name === 'PropertyUid' || element.name === 'ConditionUid')
+    ) {
+      element.value = generateId(element.simpleType.restriction.pattern);
+    }
+
+    if (element.complexType?.sequence) {
+      Object.values(element.complexType.sequence).forEach((child: any) =>
+        generateUniqueIds(child, itemType)
       );
     }
-  } else {
-    console.error(
-      'Target element not found or has no sequence for path:',
-      elementPath
-    );
-  }
-};
+    if (element.complexType?.all) {
+      Object.values(element.complexType.all).forEach((child: any) =>
+        generateUniqueIds(child, itemType)
+      );
+    }
+    if (element.complexType?.choice?.elements) {
+      Object.values(element.complexType.choice.elements).forEach((child: any) =>
+        generateUniqueIds(child, itemType)
+      );
+    }
+    if (element.complexType?.complexContent?.extension?.sequence) {
+      Object.values(element.complexType.complexContent.extension.sequence).forEach((child: any) =>
+        generateUniqueIds(child, itemType)
+      );
+    }
+  };
 
-// Поиск элемента по пути
-const findElementByPath = (
-  elements: { [key: string]: any },
-  path: string
-): any | null => {
-  const pathParts = path.split('.');
-  
-  const findInElements = (
-    currentElements: { [key: string]: any },
-    parts: string[]
+  const findElementByPath = (
+    elements: { [key: string]: any },
+    path: string
   ): any | null => {
-    if (parts.length === 0) return null;
+    const pathParts = path.split('.');
+    
+    const findInElements = (
+      currentElements: { [key: string]: any },
+      parts: string[]
+    ): any | null => {
+      if (parts.length === 0) return null;
 
-    const currentPart = parts[0] as string;
-    const remainingParts = parts.slice(1);
+      const currentPart = parts[0] as string;
+      const remainingParts = parts.slice(1);
 
-    if (currentElements[currentPart]) {
-      const element = currentElements[currentPart];
-      
-      if (remainingParts.length === 0) {
-        return element;
+      if (currentElements[currentPart]) {
+        const element = currentElements[currentPart];
+        
+        if (remainingParts.length === 0) {
+          return element;
+        }
+
+        if (element.complexType?.complexContent?.extension?.sequence) {
+          const found = findInElements(element.complexType.complexContent.extension.sequence, remainingParts);
+          if (found) return found;
+        }
+        
+        if (element.complexType?.sequence) {
+          const found = findInElements(element.complexType.sequence, remainingParts);
+          if (found) return found;
+        }
+        if (element.complexType?.all) {
+          const found = findInElements(element.complexType.all, remainingParts);
+          if (found) return found;
+        }
+        if (element.complexType?.choice?.elements) {
+          const found = findInElements(element.complexType.choice.elements, remainingParts);
+          if (found) return found;
+        }
       }
 
-      // Продолжаем поиск в дочерних элементах
-      if (element.complexType?.sequence) {
-        const found = findInElements(element.complexType.sequence, remainingParts);
-        if (found) return found;
-      }
-      if (element.complexType?.all) {
-        const found = findInElements(element.complexType.all, remainingParts);
-        if (found) return found;
-      }
-      if (element.complexType?.choice?.elements) {
-        const found = findInElements(element.complexType.choice.elements, remainingParts);
-        if (found) return found;
-      }
-    }
+      return null;
+    };
 
-    return null;
+    return findInElements(elements, pathParts);
   };
 
-  return findInElements(elements, pathParts);
-};
-
-// Глубокая копия элемента
-const deepCopyElement = (element: any): any => {
-  if (element === null || typeof element !== 'object') {
-    return element;
-  }
-
-  if (Array.isArray(element)) {
-    return element.map((item) => deepCopyElement(item));
-  }
-
-  const copy: any = {};
-  for (const key in element) {
-    if (element.hasOwnProperty(key)) {
-      copy[key] = deepCopyElement(element[key]);
+  const generateXML = () => {
+    try {
+      generatedXML.value = generateXMLWithValidation(schema);
+    } catch (error) {
+      console.error('Error generating XML:', error);
+      generatedXML.value = 'Ошибка генерации XML: ' + (error as Error).message;
     }
-  }
-  return copy;
-};
-
-// Очистка значений элемента
-const clearElementValues = (element: any) => {
-  if (!element || typeof element !== 'object') return;
-
-  if ('value' in element) {
-    element.value = '';
-  }
-
-  if (element.complexType?.sequence) {
-    Object.values(element.complexType.sequence).forEach((child: any) =>
-      clearElementValues(child)
-    );
-  }
-
-  if (element.complexType?.all) {
-    Object.values(element.complexType.all).forEach((child: any) =>
-      clearElementValues(child)
-    );
-  }
-
-  if (element.complexType?.choice?.elements) {
-    Object.values(element.complexType.choice.elements).forEach((child: any) =>
-      clearElementValues(child)
-    );
-  }
-};
-
-// Генерация уникальных ID для нового элемента
-const generateUniqueIds = (element: any, itemType: string) => {
-  const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000);
-
-  const generateId = (pattern: string): string => {
-    if (pattern.includes('Object([0-9])+')) {
-      return `Object${timestamp}${random}`;
-    } else if (pattern.includes('Relation([0-9]+)')) {
-      return `Relation${timestamp}${random}`;
-    } else if (pattern.includes('Property([0-9])+')) {
-      return `Property${timestamp}${random}`;
-    } else if (pattern.includes('Condition([0-9]+)')) {
-      return `Condition${timestamp}${random}`;
-    }
-    return `${itemType}${timestamp}${random}`;
   };
-
-  if (
-    element.simpleType?.restriction?.pattern &&
-    (element.name === 'EntityUid' || element.name === 'RelationUid' || element.name === 'PropertyUid')
-  ) {
-    element.value = generateId(element.simpleType.restriction.pattern);
-  }
-
-  // Рекурсивно обрабатываем вложенные элементы
-  if (element.complexType?.sequence) {
-    Object.values(element.complexType.sequence).forEach((child: any) =>
-      generateUniqueIds(child, itemType)
-    );
-  }
-  if (element.complexType?.all) {
-    Object.values(element.complexType.all).forEach((child: any) =>
-      generateUniqueIds(child, itemType)
-    );
-  }
-  if (element.complexType?.choice?.elements) {
-    Object.values(element.complexType.choice.elements).forEach((child: any) =>
-      generateUniqueIds(child, itemType)
-    );
-  }
-};
-
-// Генерация XML
-const generateXML = () => {
-  try {
-    // Сначала синхронизируем все значения из elementValues в schema
-    syncValuesToSchema();
-
-    // Получаем информацию о схеме для отладки
-    const schemaInfo = getSchemaInfo(schema);
-    console.log('Schema info:', schemaInfo);
-
-    // Генерируем XML с валидацией
-    generatedXML.value = generateXMLWithValidation(schema);
-    console.log('Generated XML from schema:', schema);
-  } catch (error) {
-    console.error('Error generating XML:', error);
-    generatedXML.value = 'Ошибка генерации XML: ' + (error as Error).message;
-  }
-};
-
-
-// Функция для получения экземпляров по типу
-const getComplexTypeInstances = (type: string): ComplexTypeInstance[] => {
-  return complexTypesStore.value.filter(instance => instance.type === type);
-};
-
-// Функция для добавления сложного типа в схему
-const applyComplexTypeToElement = (elementPath: string, complexTypeInstance: ComplexTypeInstance) => {
-  const targetElement = findElementByPath(schema.elements, elementPath);
-  if (targetElement) {
-    targetElement.value = complexTypeInstance.data;
-    updateElementValue(elementPath, complexTypeInstance.data);
-  }
-};
 
   return {
     schema,
@@ -420,9 +429,8 @@ const applyComplexTypeToElement = (elementPath: string, complexTypeInstance: Com
     generateXML,
     handleFileUpload,
     updateElementValue,
-    handleAddItem,
-    complexTypesStore,
-    getComplexTypeInstances,
-    applyComplexTypeToElement
+    handleAddEntity,
+    handleAddProperty,
+    handleAddRelation
   };
 }

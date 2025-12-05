@@ -34,7 +34,7 @@
     </div>
 
     <!-- Атрибуты -->
-    <div v-if="data.attributes && Object.keys(data.attributes).length > 0" class="mt-2 pt-2 border-t border-gray-200">
+    <div v-if="data?.attributes && Object.keys(data.attributes).length > 0" class="mt-2 pt-2 border-t border-gray-200">
       <div class="text-xs font-semibold text-gray-500 mb-2">Атрибуты:</div>
       <div v-for="(value, key) in data.attributes" :key="`attr_${key}`" class="flex items-center py-1">
         <div class="w-1/3 font-medium text-sm text-gray-600 pr-2 text-xs">

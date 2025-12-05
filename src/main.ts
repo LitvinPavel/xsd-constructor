@@ -1,4 +1,10 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import DevExtreme from './plugins/devextreme'
 
-createApp(App).mount('#app')
+const app = createApp(App)
+
+// Установка плагина DevExtreme
+app.use(DevExtreme)
+
+app.mount('#app')

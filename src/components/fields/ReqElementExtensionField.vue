@@ -4,7 +4,8 @@
       v-for="(field, key) in schema?.complexTypes?.ReqElement?.attributes"
       :key="key"
       :value="element.value.attributes[key]"
-      :name="field.annotation?.documentation || field.name"
+      :label="field.annotation?.documentation || field.name"
+      :name="field.name"
       :disabled="true"
       @input="onReqElementAttrChange('ReqElementType', $event)"
     />
@@ -14,7 +15,8 @@
         ?.attributes"
       :key="key"
       :value="element.value.attributes[key]"
-      :name="field.annotation?.documentation || field.name"
+      :label="field.annotation?.documentation || field.name"
+      :name="field.name"
       @input="onReqElementAttrChange('ReqElementUid', $event)"
     />
 
@@ -23,7 +25,8 @@
       :key="field.name"
       :value="getReqElementFieldValue(field.name)"
       :type="getInputType(field.type)"
-      :name="field.annotation?.documentation || field.name"
+      :label="field.annotation?.documentation || field.name"
+      :name="field.name"
       :field-type="field.name === 'ReqElementData' ? 'textarea' : 'input'"
       @input="onReqElementFieldChange(field.name, $event)"
     />

@@ -1,40 +1,22 @@
 <template>
   <div class="flex items-center gap-4 mb-3">
-    <label :for="fieldId" class="w-1/4 text-sm">
-      {{ name }}
+    <label :for="fieldId" class="text-sm w-1/3 text-gray-600">
+      {{ label }}
     </label>
     <div class="flex-1">
       <div class="flex gap-2 items-start flex-1">
-        <select
-          :value="modelValue"
-          :id="fieldId"
-          :name="fieldId"
-          :disabled="disabled"
-          class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
-          @change="
-            $emit(
-              'update:modelValue',
-              ($event.target as HTMLSelectElement).value
-            )
-          "
-        >
-          <option value="">-- Выберите из списка --</option>
-          <option
-            v-for="(option, id) in options"
-            :key="id"
-            :value="option[optionKey]"
-          >
-            {{ getOptionLabel(option) }}
-          </option>
-        </select>
-        <button
-          v-if="modelValue && !isСannotEnpty"
-          @click="$emit('update:modelValue', undefined)"
-          class="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 whitespace-nowrap"
-          type="button"
-        >
-          Очистить
-        </button>
+        <DxSelectBox
+        :id="fieldId"
+        :value="modelValue"
+        :items="options"
+        :display-expr="getDisplayExpr"
+        :value-expr="optionKey"
+        :disabled="disabled"
+        :show-clear-button="!isСannotEnpty"
+        :placeholder="`Выберите значение для поля ${name}`"
+        @value-changed="onValueChanged"
+        class="flex-1"
+      />
       </div>
       <slot></slot>
     </div>
@@ -42,7 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import { useId } from "vue";
+import { useId, computed } from "vue";
+import { DxSelectBox } from "devextreme-vue";
 
 interface IOption {
   [key: string]: any;
@@ -50,6 +33,7 @@ interface IOption {
 
 interface Props {
   name: string;
+  label?: string;
   modelValue?: string;
   options: IOption[];
   optionKey: keyof IOption;
@@ -70,12 +54,23 @@ const emit = defineEmits<Emits>();
 
 const fieldId = useId();
 
-const getOptionLabel = (option: IOption): any => {
-  const label = String(props.labelKey)
-    .split(".")
-    .reduce((acc, key) => {
-      return acc && acc[key] !== undefined ? acc[key] : "";
-    }, option);
-  return label;
-};
+const getDisplayExpr = computed(() => {
+  return (item: IOption) => {
+    const keys = String(props.labelKey).split(".");
+    let value = item;
+    for (const key of keys) {
+      if (value && value[key] !== undefined) {
+        value = value[key];
+      } else {
+        return "";
+      }
+    }
+    return String(value);
+  };
+});
+
+function onValueChanged(event: { value: string }) {
+  emit("update:modelValue", event.value);
+}
+
 </script>

@@ -1,10 +1,9 @@
-<!-- components/XSDGroup.vue -->
 <template>
-  <div class="mb-1" :class="[level === 0 ? 'p-4' : `ml-${level * 2} pl-4`]">
+  <div class="mb-4" :class="[level === 0 ? 'p-4' : `ml-${level * 2} pl-4`]">
     <div v-if="!element.type && element.complexType?.sequence" class="w-full">
       <div
         v-if="element.annotation?.documentation"
-        class="mb-1 pb-1 flex justify-between items-start flex-wrap gap-4"
+        class="mb-2 pb-2 border-b border-gray-200 flex justify-between items-start flex-wrap gap-4"
       >
         <div class="flex items-center gap-2">
           <button
@@ -50,13 +49,13 @@
         </div>
 
         <div v-if="isEntitiesOrPropertiesOrRelations" class="flex gap-2">
-          <button
+          <DxButton
             @click="handleAddElement(element.name)"
-            class="bg-green-500 text-white border-none py-2 px-4 rounded cursor-pointer text-sm transition-colors hover:bg-green-600 whitespace-nowrap"
-            type="button"
-          >
-            + Добавить
-          </button>
+            :text="`+ Добавить`"
+            type="default"
+            styling-mode="contained"
+            class="whitespace-nowrap"
+          />
         </div>
       </div>
 
@@ -73,20 +72,20 @@
             :key="String(key)"
             class="mb-1"
             :class="{
-              'border rounded-lg border-gray-300 pr-4 pt-2': canRemoveItem(
+              'border rounded-lg border-gray-200 p-4 pt-2': canRemoveItem(
                 item.name
               ),
             }"
           >
-            <div v-if="canRemoveItem(item.name)" class="flex justify-end -mb-6">
-              <button
+            <div v-if="canRemoveItem(item.name)" class="flex justify-end mb-2">
+              <DxButton
                 @click="removeItem(String(key))"
-                class="bg-red-500 text-white border-none py-1 px-2 rounded cursor-pointer text-sm hover:bg-red-600"
-                type="button"
+                :text="'× Удалить'"
+                type="danger"
+                styling-mode="outlined"
                 :disabled="isKSIIdentificationField(item)"
-              >
-                × Удалить
-              </button>
+                class="text-sm"
+              />
             </div>
 
             <XSDGroup
@@ -110,7 +109,7 @@
           <div
             v-for="(item, key) in element.complexType.all"
             :key="String(key)"
-            class="mb-1"
+            class="mb-2"
           >
             <XSDGroup
               :element="item"
@@ -134,65 +133,62 @@
           <div
             v-for="(attr, key) in element.complexType.attributes"
             :key="key"
+            class="mb-2"
           >
             <BaseFieldSelect
               v-if="attr.simpleType?.restriction?.enumerations"
               v-model="attr.value"
               :options="attr.simpleType.restriction.enumerations"
-              :name="attr.annotation.documentation"
+              :name="attr.name"
+              :label="attr.annotation.documentation"
               option-key="value"
               label-key="value"
             />
             <BaseFieldInput
               v-else-if="attr.type"
               :value="attr.value"
-              :name="attr.annotation.documentation"
+              :name="attr.name"
+              :label="attr.annotation.documentation"
               :type="getInputType(attr.type)"
               :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
-              @input="($event) => attr.value = $event"
+              @input="($event) => (attr.value = $event)"
             />
           </div>
         </template>
       </div>
     </div>
+
     <BaseFieldSelect
       v-else-if="element.type && isComplexType(element.type)"
       v-model="selectedComplexTypeId"
-      :name="element.annotation.documentation"
+      :name="element.name"
+      :label="element.annotation.documentation"
       :options="availableMockInstances"
       option-key="id"
       label-key="annotation.documentation"
       :disabled="isKSIIdentificationField(element)"
-      :isСannotEnpty="true"
+      :isСannotEnpty="isKSIIdentificationField(element)"
       @change="onComplexTypeSelected"
     >
-    <div
-            v-if="hasComplexTypeValue"
-            class="p-4 bg-gray-100 rounded-b-lg border-x border-b border-gray-300"
-          >
-            <ComplexTypeInstanceView
-              :data="element.value"
-              :type-definition="getComplexTypeDefinition(element.type)"
-            />
-          </div>
-  </BaseFieldSelect>
-
-    <div v-else-if="element.type || element.simpleType" class="mb-3">
-      <label class="flex items-center w-full gap-4">
-        <span v-if="element.annotation?.documentation" class="w-1/4 text-sm">
-          {{ element.annotation.documentation }}
-        </span>
-        <input
-          :type="getInputType(element.type)"
-          :value="element.value || ''"
-          @input="handleInputChange($event)"
-          class="py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-          :class="{ 'flex-1': getInputType(element.type) !== 'checkbox' }"
-          :placeholder="`Введите значение для ${element.name}`"
-          :pattern="element.pattern || element.simpleType?.restriction?.pattern"
+      <div
+        v-if="hasComplexTypeValue"
+        class="p-4 bg-gray-100 rounded-b-lg border-x border-b border-gray-300"
+      >
+        <ComplexTypeInstanceView
+          :data="element.value"
+          :type-definition="getComplexTypeDefinition(element.type)"
         />
-      </label>
-    </div>
+      </div>
+    </BaseFieldSelect>
+    <BaseFieldInput
+      v-else-if="element.type || element.simpleType"
+      :value="element.value || ''"
+      :name="element.name"
+      :label="element.annotation?.documentation"
+      :type="getInputType(element.type)"
+      :pattern="element.pattern || element.simpleType?.restriction?.pattern"
+      @input="handleInputChange"
+    />
 
     <AddEntityModal
       v-model="showEntitySelector"
@@ -207,6 +203,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, inject, watch } from "vue";
+import DxButton from "devextreme-vue/button";
 import ComplexTypeInstanceView from "@/components/ComplexTypeInstanceView.vue";
 import type { ComplexTypeInstance, XSDSchema } from "@/types";
 import {
@@ -300,15 +297,7 @@ const getComplexTypeDefinition = (typeName: string) => {
   return schema?.complexTypes?.[typeName];
 };
 
-const handleInputChange = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  let value: any = target.value;
-
-  if (target.type === "number") {
-    value = target.valueAsNumber || target.value;
-  } else if (target.type === "checkbox") {
-    value = target.checked;
-  }
+const handleInputChange = (value: string | number | boolean) => {
   const currentValue = props.isAttributeValue ? { attributes: value } : value;
   emit("update-value", currentPath.value, currentValue);
 };

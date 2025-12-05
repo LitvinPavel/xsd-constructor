@@ -1,4 +1,3 @@
-// utils/xmlGenerator.ts
 import * as builder from "xmlbuilder";
 import type { XSDElement, XSDSchema } from "@/types";
 
@@ -28,7 +27,7 @@ export function generateXMLWithValidation(schema: XSDSchema): string {
       for (const [_key, childElement] of Object.entries(
         rootElement.complexType.sequence
       )) {
-        if (childElement?.name) {
+        if (childElement?.name && hasContent(childElement)) {
           processElementWithValidation(xml, childElement);
         }
       }
@@ -42,6 +41,11 @@ export function generateXMLWithValidation(schema: XSDSchema): string {
 
 function processElementWithValidation(parent: any, element: any): void {
   if (!element || !element.name) return;
+
+  // Проверяем, есть ли содержание у элемента
+  if (!hasContent(element)) {
+    return;
+  }
 
   const currentNode = parent.ele(element.name);
 
@@ -69,11 +73,17 @@ function processElementWithValidation(parent: any, element: any): void {
     currentNode.txt(String(element.value));
   }
 
+  // Обработка дочерних элементов
+  let hasChildContent = false;
+  
   if (element.complexType?.complexContent?.extension?.sequence) {
     for (const [_childKey, child] of Object.entries(
       element.complexType.complexContent.extension.sequence
     )) {
-      processElementWithValidation(currentNode, child);
+      if ((child as XSDElement)?.name && hasContent(child)) {
+        hasChildContent = true;
+        processElementWithValidation(currentNode, child);
+      }
     }
   }
 
@@ -81,25 +91,44 @@ function processElementWithValidation(parent: any, element: any): void {
     for (const [_childKey, child] of Object.entries(
       element.complexType.sequence
     )) {
-      processElementWithValidation(currentNode, child);
+      if ((child as XSDElement)?.name && hasContent(child)) {
+        hasChildContent = true;
+        processElementWithValidation(currentNode, child);
+      }
     }
   }
 
   if (element.complexType?.all) {
     for (const [_childKey, child] of Object.entries(element.complexType.all)) {
-      processElementWithValidation(currentNode, child);
+      if ((child as XSDElement)?.name && hasContent(child)) {
+        hasChildContent = true;
+        processElementWithValidation(currentNode, child);
+      }
     }
   }
 
   if (element.complexType?.attributes) {
-    for (const [_childKey, child] of Object.entries(
+    for (const [attrKey, child] of Object.entries(
       element.complexType.attributes
     )) {
       const value = (child as XSDElement).value;
-      if (value) {
-        currentNode.att(_childKey, String(value));
+      if (value !== undefined && value !== null && value !== "") {
+        currentNode.att(attrKey, String(value));
       }
     }
+  }
+
+  // Если у элемента нет контента (значения и дочерних элементов), удаляем его
+  if (!hasChildContent && 
+      (!element.value || element.value === "" || element.value === null || element.value === undefined) &&
+      (!element.complexType?.attributes || 
+       Object.keys(element.complexType.attributes).length === 0 ||
+       !Object.values(element.complexType.attributes).some((attr: any) => 
+         attr.value !== undefined && attr.value !== null && attr.value !== ""
+       ))
+  ) {
+    // xmlbuilder не поддерживает удаление узлов, поэтому проверяем перед созданием
+    return;
   }
 }
 
@@ -133,6 +162,8 @@ function processComplexTypeByDefinition(
       "ReqElementNotes",
     ];
 
+    let hasReqElementContent = false;
+    
     for (const field of reqElementFields) {
       const fieldValue = complexValue[field];
       if (
@@ -140,6 +171,7 @@ function processComplexTypeByDefinition(
         fieldValue !== null &&
         fieldValue !== ""
       ) {
+        hasReqElementContent = true;
         const fieldNode = parent.ele(field);
 
         if (
@@ -158,11 +190,25 @@ function processComplexTypeByDefinition(
         }
       }
     }
+    
+    // Если нет контента в ReqElement, не создаем его
+    if (!hasReqElementContent && 
+        (!complexValue.attributes || 
+         Object.keys(complexValue.attributes).length === 0 ||
+         !Object.values(complexValue.attributes).some((attr: any) => 
+           attr !== undefined && attr !== null && attr !== ""
+         ))
+    ) {
+      return;
+    }
   } else {
+    let hasComplexContent = false;
+    
     for (const [key, value] of Object.entries(complexValue)) {
       if (key === "attributes") continue;
 
       if (value !== undefined && value !== null && value !== "") {
+        hasComplexContent = true;
         const fieldNode = parent.ele(key);
 
         if (typeof value === "object" && !Array.isArray(value)) {
@@ -178,9 +224,15 @@ function processComplexTypeByDefinition(
         complexValue.attributes
       )) {
         if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
+          hasComplexContent = true;
           parent.att(attrKey, String(attrValue));
         }
       }
+    }
+    
+    // Если нет контента в complex type, не создаем его
+    if (!hasComplexContent) {
+      return;
     }
   }
 }
@@ -188,10 +240,13 @@ function processComplexTypeByDefinition(
 function processComplexTypeValue(parent: any, complexValue: any): void {
   if (!complexValue || typeof complexValue !== "object") return;
 
+  let hasContent = false;
+  
   for (const [key, value] of Object.entries(complexValue)) {
     if (key === "attributes") continue;
 
     if (value !== undefined && value !== null && value !== "") {
+      hasContent = true;
       const fieldNode = parent.ele(key);
 
       if (typeof value === "object" && !Array.isArray(value)) {
@@ -207,9 +262,15 @@ function processComplexTypeValue(parent: any, complexValue: any): void {
       complexValue.attributes
     )) {
       if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
+        hasContent = true;
         parent.att(attrKey, String(attrValue));
       }
     }
+  }
+  
+  // Если нет контента, не создаем элемент
+  if (!hasContent) {
+    return;
   }
 }
 
@@ -223,4 +284,88 @@ function isComplexType(typeName?: string): boolean {
     "ReqElement",
   ];
   return complexTypes.includes(typeName);
+}
+
+/**
+ * Проверяет, имеет ли элемент какое-либо содержание
+ * (значение, атрибуты или дочерние элементы с содержанием)
+ */
+function hasContent(element: any): boolean {
+  if (!element) return false;
+  
+  // Проверяем простое значение
+  if (element.value !== undefined && 
+      element.value !== null && 
+      element.value !== "") {
+    return true;
+  }
+  
+  // Проверяем атрибуты
+  if (element.complexType?.attributes) {
+    const hasAttributeValue = Object.values(element.complexType.attributes)
+      .some((attr: any) => 
+        attr.value !== undefined && 
+        attr.value !== null && 
+        attr.value !== ""
+      );
+    if (hasAttributeValue) return true;
+  }
+  
+  // Рекурсивно проверяем дочерние элементы
+  if (element.complexType?.complexContent?.extension?.sequence) {
+    const hasChildContent = Object.values(element.complexType.complexContent.extension.sequence)
+      .some((child: any) => hasContent(child));
+    if (hasChildContent) return true;
+  }
+  
+  if (element.complexType?.sequence) {
+    const hasChildContent = Object.values(element.complexType.sequence)
+      .some((child: any) => hasContent(child));
+    if (hasChildContent) return true;
+  }
+  
+  if (element.complexType?.all) {
+    const hasChildContent = Object.values(element.complexType.all)
+      .some((child: any) => hasContent(child));
+    if (hasChildContent) return true;
+  }
+  
+  if (element.complexType?.choice?.elements) {
+    const hasChildContent = Object.values(element.complexType.choice.elements)
+      .some((child: any) => hasContent(child));
+    if (hasChildContent) return true;
+  }
+  
+  // Для complex type с данными
+  if (element.type && isComplexType(element.type) && element.value) {
+    return true;
+  }
+  
+  // Для ReqElement extension
+  if (element.complexType?.complexContent?.extension?.base === "ReqElement" && element.value) {
+    const reqValue = element.value;
+    // Проверяем поля ReqElement
+    const reqElementFields = [
+      "ReqElementData",
+      "ReqElementNumber",
+      "ReqElementName",
+      "ReqElementLink",
+      "ReqElementNotes"
+    ];
+    
+    const hasReqField = reqElementFields.some(field => 
+      reqValue[field] !== undefined && 
+      reqValue[field] !== null && 
+      reqValue[field] !== ""
+    );
+    
+    const hasAttribute = reqValue.attributes && 
+      Object.values(reqValue.attributes).some((attr: any) => 
+        attr !== undefined && attr !== null && attr !== ""
+      );
+    
+    return hasReqField || hasAttribute;
+  }
+  
+  return false;
 }

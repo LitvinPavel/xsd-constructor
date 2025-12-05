@@ -63,9 +63,9 @@ export interface XSDSchema {
   elements: { [key: string]: XSDElement };
   complexTypes: { [key: string]: XSDComplexType };
   simpleTypes: { [key: string]: XSDSimpleType };
-  entityStructur: Partial<XSDElement>,
-  propertyStructur: Partial<XSDElement>,
-  relationStructur: Partial<XSDElement>
+  entityStructur: Partial<XSDElement>;
+  propertyStructur: Partial<XSDElement>;
+  relationStructur: Partial<XSDElement>;
 }
 
 export interface ComplexTypeInstance {
@@ -76,4 +76,14 @@ export interface ComplexTypeInstance {
   annotation?: {
     documentation: string;
   };
+}
+
+export interface TreeNodeData {
+  key: string;
+  element: XSDElement;
+  level: number;
+  parentKey?: string;
+  children?: TreeNodeData[];
+  path: string;
+  hasChildren: boolean;
 }

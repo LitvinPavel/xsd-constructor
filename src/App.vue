@@ -10,7 +10,8 @@
 import { provide } from 'vue';
 import XSDForm from '@/components/XSDForm.vue';
 import { mockData } from '@/mockData';
-import 'devextreme/dist/css/dx.light.css';
+import 'devextreme/dist/css/dx.common.css';
+import 'devextreme/dist/css/dx.softblue.css';
 
 // Предоставляем mockData глобально для DevExtreme компонентов
 provide('mockData', mockData);
@@ -19,7 +20,8 @@ provide('mockData', mockData);
 
 <style>
 @import 'tailwindcss';
-@import 'devextreme/dist/css/dx.light.css';
+@import 'devextreme/dist/css/dx.common.css';
+@import 'devextreme/dist/css/dx.softblue.css';
 
 .dx-widget {
   font-family: inherit;

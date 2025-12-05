@@ -168,7 +168,7 @@
       label-key="annotation.documentation"
       :disabled="isKSIIdentificationField(element)"
       :isСannotEnpty="isKSIIdentificationField(element)"
-      @change="onComplexTypeSelected"
+      @update:modelValue="onComplexTypeSelected"
     >
       <div
         v-if="hasComplexTypeValue"
@@ -180,6 +180,9 @@
         />
       </div>
     </BaseFieldSelect>
+    <div v-else-if="element.name === 'TailObjectId' || element.name === 'HeadObjectId'">
+      <EntityIdFieldSelect :name="element.name" :label="element.annotation.documentation" @update-value="handleSelectEntity" />
+    </div>
     <BaseFieldInput
       v-else-if="element.type || element.simpleType"
       :value="element.value || ''"
@@ -218,6 +221,7 @@ import BaseFieldSelect from "./fields/BaseFieldSelect.vue";
 import BaseFieldInput from "./fields/BaseFieldInput.vue";
 import AddEntityModal from "./modals/AddEntityModal.vue";
 import AddPropertyModal from "./modals/AddPropertyModal.vue";
+import EntityIdFieldSelect from "./fields/EntityIdFieldSelect.vue";
 
 interface Props {
   element: any;
@@ -297,6 +301,9 @@ const getComplexTypeDefinition = (typeName: string) => {
   return schema?.complexTypes?.[typeName];
 };
 
+const handleSelectEntity = (value: string | undefined) => {
+  emit("update-value", currentPath.value, value);
+}
 const handleInputChange = (value: string | number | boolean) => {
   const currentValue = props.isAttributeValue ? { attributes: value } : value;
   emit("update-value", currentPath.value, currentValue);

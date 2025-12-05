@@ -116,6 +116,7 @@ export function useForm() {
         return true;
       } else {
         const element = elements[currentKey];
+        console.log(element)
 
         if (element.complexType?.complexContent?.extension?.sequence) {
           const found = updateSchemaElementValue(

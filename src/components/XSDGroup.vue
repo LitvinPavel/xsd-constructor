@@ -61,77 +61,22 @@
       </div>
 
       <div v-show="isExpanded">
-        <template v-if="isReqElementExtension">
-          <div class="p-2 mb-1">
-            <div
-              v-for="(field, key) in schema?.complexTypes?.ReqElement
-                ?.attributes"
-              :key="key"
-              class="flex items-center gap-4 mb-3"
-            >
-              <label class="w-1/4 text-sm">
-                {{ field.annotation?.documentation || field.name }}
-              </label>
-              <input
-                type="text"
-                :value="element.value.attributes[key]"
-                disabled
-                @input="onReqElementTypeChange"
-                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                :placeholder="`Введите значение для ${field.name}`"
-              />
-            </div>
-            <div
-              v-for="(field, key) in element.complexType.complexContent
-                .extension?.attributes"
-              :key="key"
-              class="flex items-center gap-4 mb-3"
-            >
-              <label class="w-1/4 text-sm">
-                {{ field.annotation?.documentation || field.name }}
-              </label>
-              <input
-                type="text"
-                :value="element.value.attributes[key]"
-                @input="onReqElementUidChange"
-                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                :placeholder="`Введите значение для ${field.name}`"
-              />
-            </div>
-            <div
-              v-for="field in schema?.complexTypes?.ReqElement?.sequence"
-              :key="field.name"
-              class="flex items-center gap-4 mb-3"
-            >
-              <label class="w-1/4 text-sm">
-                {{ field.annotation?.documentation || field.name }}
-              </label>
-              <textarea
-                v-if="field.name === 'ReqElementData'"
-                :value="getReqElementFieldValue(field.name)"
-                @input="onReqElementFieldChange(field.name, $event)"
-                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 font-mono"
-                rows="6"
-                :placeholder="`Введите значение для ${field.name}`"
-              ></textarea>
-              <input
-                v-else
-                :type="getInputType(field.type)"
-                :value="getReqElementFieldValue(field.name)"
-                @input="onReqElementFieldChange(field.name, $event)"
-                class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                :placeholder="`Введите значение для ${field.name}`"
-              />
-            </div>
-          </div>
-        </template>
+        <ReqElementExtensionField
+          v-if="isReqElementExtension"
+          :element="element"
+          @update-value="emit('update-value', currentPath, $event)"
+        />
 
         <template v-else-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
             :key="String(key)"
             class="mb-1"
-            :class="{ 'border rounded-lg border-gray-300 pr-4 pt-2': canRemoveItem(item.name) }"
+            :class="{
+              'border rounded-lg border-gray-300 pr-4 pt-2': canRemoveItem(
+                item.name
+              ),
+            }"
           >
             <div v-if="canRemoveItem(item.name)" class="flex justify-end -mb-6">
               <button
@@ -143,6 +88,7 @@
                 × Удалить
               </button>
             </div>
+
             <XSDGroup
               :element="item"
               :level="level + 1"
@@ -178,149 +124,84 @@
             />
           </div>
         </template>
+
+        <template
+          v-if="
+            element?.complexType?.attributes &&
+            Object.keys(element.complexType.attributes).length
+          "
+        >
+          <div
+            v-for="(attr, key) in element.complexType.attributes"
+            :key="key"
+          >
+            <BaseFieldSelect
+              v-if="attr.simpleType?.restriction?.enumerations"
+              v-model="attr.value"
+              :options="attr.simpleType.restriction.enumerations"
+              :name="attr.annotation.documentation"
+              option-key="value"
+              label-key="value"
+            />
+            <BaseFieldInput
+              v-else-if="attr.type"
+              :value="attr.value"
+              :name="attr.annotation.documentation"
+              :type="getInputType(attr.type)"
+              :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
+              @input="($event) => attr.value = $event"
+            />
+          </div>
+        </template>
       </div>
     </div>
-
-    <div v-else-if="element.type && isComplexType(element.type)" class="mb-3">
-      <label class="flex items-center w-full gap-4">
-        <span
-          v-if="element.annotation?.documentation"
-          class="w-1/4 text-sm"
-        >
-          {{ element.annotation.documentation }}
-        </span>
-
-        <div class="flex-1">
-          <div class="flex gap-2 items-start flex-1">
-          <select
-            v-model="selectedComplexTypeId"
-            @change="onComplexTypeSelected"
-            class="flex-1 py-2 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
-            :disabled="isKSIIdentificationField(element)"
+    <BaseFieldSelect
+      v-else-if="element.type && isComplexType(element.type)"
+      v-model="selectedComplexTypeId"
+      :name="element.annotation.documentation"
+      :options="availableMockInstances"
+      option-key="id"
+      label-key="annotation.documentation"
+      :disabled="isKSIIdentificationField(element)"
+      :isСannotEnpty="true"
+      @change="onComplexTypeSelected"
+    >
+    <div
+            v-if="hasComplexTypeValue"
+            class="p-4 bg-gray-100 rounded-b-lg border-x border-b border-gray-300"
           >
-            <option value="">-- Выберите из списка --</option>
-            <option
-              v-for="instance in availableMockInstances"
-              :key="instance.id"
-              :value="instance.id"
-            >
-              {{ instance.annotation?.documentation || instance.name }}
-            </option>
-          </select>
-
-          <button
-            v-if="hasComplexTypeValue && !isKSIIdentificationField(element)"
-            @click="clearComplexType"
-            class="px-3 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 whitespace-nowrap"
-            type="button"
-          >
-            Очистить
-          </button>
-        </div>
-        <div
-          v-if="hasComplexTypeValue"
-          class="p-4 bg-gray-100 rounded-b-lg border-x border-b border-gray-300"
-        >
-          <ComplexTypeInstanceView
-            :data="element.value"
-            :type-definition="getComplexTypeDefinition(element.type)"
-          />
-        </div>
-        </div>
-
-        
-      </label>
-      
-    </div>
+            <ComplexTypeInstanceView
+              :data="element.value"
+              :type-definition="getComplexTypeDefinition(element.type)"
+            />
+          </div>
+  </BaseFieldSelect>
 
     <div v-else-if="element.type || element.simpleType" class="mb-3">
       <label class="flex items-center w-full gap-4">
-        <span
-          v-if="element.annotation?.documentation"
-          class="w-1/4 text-sm"
-        >
+        <span v-if="element.annotation?.documentation" class="w-1/4 text-sm">
           {{ element.annotation.documentation }}
         </span>
         <input
           :type="getInputType(element.type)"
-          :value="getElementValue()"
+          :value="element.value || ''"
           @input="handleInputChange($event)"
           class="py-2 px-3 border border-gray-300 rounded text-sm transition-colors focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
           :class="{ 'flex-1': getInputType(element.type) !== 'checkbox' }"
           :placeholder="`Введите значение для ${element.name}`"
+          :pattern="element.pattern || element.simpleType?.restriction?.pattern"
         />
       </label>
     </div>
 
-    <div
-      v-if="showEntitySelector"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div
-        class="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto"
-      >
-        <h3 class="text-lg font-semibold mb-4">Выберите Entity</h3>
-        <div class="space-y-2">
-          <button
-            v-for="entity in mockEntities"
-            :key="entity.id"
-            @click="selectEntity(entity)"
-            class="w-full text-left p-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-          >
-            <div class="font-medium">
-              {{ entity.annotation?.documentation || entity.name }}
-            </div>
-            <div class="text-sm text-gray-600">Тип: {{ entity.type }}</div>
-            <div class="text-xs text-gray-500 mt-1">
-              Привязан к KSI: {{ entity.data.EntityID?.KSIUIN || "Нет" }}
-            </div>
-          </button>
-        </div>
-        <div class="mt-4 flex justify-end">
-          <button
-            @click="showEntitySelector = false"
-            class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-          >
-            Отмена
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showPropertySelector"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    >
-      <div
-        class="bg-white rounded-lg p-6 max-w-md w-full max-h-96 overflow-y-auto"
-      >
-        <h3 class="text-lg font-semibold mb-4">Выберите Property</h3>
-        <div class="space-y-2">
-          <button
-            v-for="property in mockProperties"
-            :key="property.id"
-            @click="selectProperty(property)"
-            class="w-full text-left p-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-          >
-            <div class="font-medium">
-              {{ property.annotation?.documentation || property.name }}
-            </div>
-            <div class="text-sm text-gray-600">Тип: {{ property.type }}</div>
-            <div class="text-xs text-gray-500 mt-1">
-              Привязан к KSI: {{ property.data.PropertyID?.KSIUIN || "Нет" }}
-            </div>
-          </button>
-        </div>
-        <div class="mt-4 flex justify-end">
-          <button
-            @click="showPropertySelector = false"
-            class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-          >
-            Отмена
-          </button>
-        </div>
-      </div>
-    </div>
+    <AddEntityModal
+      v-model="showEntitySelector"
+      @add="emit('add-entity', currentPath, $event)"
+    />
+    <AddPropertyModal
+      v-model="showPropertySelector"
+      @add="emit('add-property', currentPath, $event)"
+    />
   </div>
 </template>
 
@@ -333,15 +214,20 @@ import {
   canRemoveItem,
   isKSIIdentificationField,
   getInputType,
-  decodeHTMLEntities,
   isReqElementExtension as isReqElementExtensionUtil,
 } from "@/utils/xsdUtils";
+import ReqElementExtensionField from "./fields/ReqElementExtensionField.vue";
+import BaseFieldSelect from "./fields/BaseFieldSelect.vue";
+import BaseFieldInput from "./fields/BaseFieldInput.vue";
+import AddEntityModal from "./modals/AddEntityModal.vue";
+import AddPropertyModal from "./modals/AddPropertyModal.vue";
 
 interface Props {
   element: any;
   level: number;
   parentPath?: string;
   currentEntityPath?: string;
+  isAttributeValue?: boolean;
 }
 
 interface Emits {
@@ -365,23 +251,9 @@ const selectedComplexTypeId = ref("");
 const showEntitySelector = ref(false);
 const showPropertySelector = ref(false);
 
-const mockEntities = computed(() => {
-  return mockData.Entities || [];
-});
-
-const mockProperties = computed(() => {
-  return mockData.Properties || [];
-});
-
 const isReqElementExtension = computed(() => {
   return isReqElementExtensionUtil(props.element);
 });
-
-const getReqElementFieldValue = (fieldName: string): any => {
-  if (!props.element.value || typeof props.element.value !== "object")
-    return "";
-  return props.element.value[fieldName] || "";
-};
 
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
@@ -416,23 +288,12 @@ const onComplexTypeSelected = () => {
   }
 };
 
-const clearComplexType = () => {
-  if (isKSIIdentificationField(props.element)) return;
-
-  selectedComplexTypeId.value = "";
-  emit("update-value", currentPath.value, null);
-};
-
 const toggleExpanded = () => {
   isExpanded.value = !isExpanded.value;
 };
 
 const getItemPath = (key: string): string => {
   return `${currentPath.value}.${key}`;
-};
-
-const getElementValue = (): any => {
-  return props.element.value || "";
 };
 
 const getComplexTypeDefinition = (typeName: string) => {
@@ -448,61 +309,12 @@ const handleInputChange = (event: Event) => {
   } else if (target.type === "checkbox") {
     value = target.checked;
   }
-
-  emit("update-value", currentPath.value, value);
+  const currentValue = props.isAttributeValue ? { attributes: value } : value;
+  emit("update-value", currentPath.value, currentValue);
 };
 
 const handleChildUpdate = (path: string, value: any) => {
   emit("update-value", path, value);
-};
-
-const onReqElementTypeChange = (event: Event) => {
-  const value = (event.target as HTMLSelectElement).value;
-  const currentValue = props.element.value || {};
-  const updatedValue = {
-    ...currentValue,
-    attributes: {
-      ...currentValue.attributes,
-      ReqElementType: value,
-    },
-  };
-
-  emit("update-value", currentPath.value, updatedValue);
-};
-
-const onReqElementUidChange = (event: Event) => {
-  const value = (event.target as HTMLInputElement).value;
-  const currentValue = props.element.value || {};
-  const updatedValue = {
-    ...currentValue,
-    attributes: {
-      ...currentValue.attributes,
-      ReqElementUId: value,
-    },
-  };
-
-  emit("update-value", currentPath.value, updatedValue);
-};
-
-const onReqElementFieldChange = (fieldName: string, event: Event) => {
-  const value = (event.target as HTMLInputElement | HTMLTextAreaElement).value;
-  const currentValue = props.element.value || {};
-  const updatedValue = {
-    ...currentValue,
-    [fieldName]: decodeHTMLEntities(value),
-  };
-
-  emit("update-value", currentPath.value, updatedValue);
-};
-
-const selectEntity = (entity: ComplexTypeInstance) => {
-  showEntitySelector.value = false;
-  emit("add-entity", currentPath.value, entity);
-};
-
-const selectProperty = (property: ComplexTypeInstance) => {
-  showPropertySelector.value = false;
-  emit("add-property", currentPath.value, property);
 };
 
 function handleAddElement(name: string) {

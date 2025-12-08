@@ -1,0 +1,29 @@
+{
+  "projectContext": {
+    "name": "XSD Constructor",
+    "description": "Визуальный конструктор XML по XSD схемам",
+    "techStack": ["Vue 3", "TypeScript", "Tailwind", "DevExtreme"],
+    "keyComponents": ["XSDForm", "XSDGroup", "useForm"],
+    "patterns": [
+      "Рекурсивные компоненты",
+      "Composition API",
+      "Provide/Inject",
+      "Event bubbling"
+    ]
+  },
+  "codeStyle": {
+    "componentStructure": "<template> → <script setup> → <style>",
+    "naming": {
+      "components": "PascalCase",
+      "composables": "camelCase",
+      "types": "PascalCase"
+    },
+    "imports": "Относительные пути с @/ alias"
+  },
+  "projectSpecific": {
+    "xsdParsing": "Используйте XSDParser из utils/xsdParser.ts",
+    "elementPaths": "Используйте систему путей для идентификации элементов",
+    "complexTypes": ["KSIIdentification", "Condition", "Organization", "Link"],
+    "removableItems": ["Entity", "Property", "Relation", "LogicalUnit"]
+  }
+}

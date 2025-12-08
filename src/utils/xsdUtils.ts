@@ -1,7 +1,7 @@
 export const COMPLEX_TYPES = ['KSIIdentification', 'Condition', 'Organization', 'Link'];
-export const REMOVABLE_ITEMS = ['Entity', 'Property', 'Relation'];
+export const REMOVABLE_ITEMS = ['Entity', 'Property', 'Relation', 'LogicalUnit'];
 export const KSI_IDENTIFICATION_FIELDS = ['EntityID', 'PropertyID'];
-export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations'];
+export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations', 'LogicalUnits'];
 
 export function isComplexType(type?: string): boolean {
   return type ? COMPLEX_TYPES.includes(type) : false;

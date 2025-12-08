@@ -29,6 +29,7 @@
             @add-entity="handleAddEntity"
             @add-property="handleAddProperty"
             @add-relation="handleAddRelation"
+            @add-logical-unit="handleAddLogicalUnit"
           />
         </div>
       </form>
@@ -81,7 +82,8 @@ const {
   updateElementValue, 
   handleAddEntity, 
   handleAddProperty,
-  handleAddRelation 
+  handleAddRelation,
+  handleAddLogicalUnit
 } = useForm();
 
 // Предоставляем схему для дочерних компонентов

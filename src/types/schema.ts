@@ -66,6 +66,7 @@ export interface XSDSchema {
   entityStructur: Partial<XSDElement>;
   propertyStructur: Partial<XSDElement>;
   relationStructur: Partial<XSDElement>;
+  logicalUnitStructur?: Partial<XSDElement>;
 }
 
 export interface ComplexTypeInstance {

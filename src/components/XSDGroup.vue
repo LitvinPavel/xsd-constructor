@@ -101,6 +101,7 @@
               @add-entity="handleChildAddEntity"
               @add-property="handleChildAddProperty"
               @add-relation="handleChildAddRelation"
+              @add-logical-unit="emit('add-logical-unit', $event)"
             />
           </div>
         </template>
@@ -120,6 +121,7 @@
               @add-entity="handleChildAddEntity"
               @add-property="handleChildAddProperty"
               @add-relation="handleChildAddRelation"
+              @add-logical-unit="emit('add-logical-unit', $event)"
             />
           </div>
         </template>
@@ -236,6 +238,7 @@ interface Emits {
   (e: "add-entity", path: string, entityData: any): void;
   (e: "add-property", path: string, propertyData: any): void;
   (e: "add-relation", path: string): void;
+  (e: "add-logical-unit", path: string): void;
 }
 
 const props = defineProps<Props>();
@@ -274,7 +277,7 @@ const availableMockInstances = computed(() => {
 });
 
 const isEntitiesOrPropertiesOrRelations = computed(() => {
-  return ["Entities", "Properties", "Relations"].includes(props.element.name);
+  return ["Entities", "Properties", "Relations", "LogicalUnits"].includes(props.element.name);
 });
 
 const onComplexTypeSelected = () => {
@@ -320,8 +323,15 @@ function handleAddElement(name: string) {
     showPropertySelector.value = true;
   } else if (name === "Relations") {
     handleAddRelation();
+  } else if (name === 'LogicalUnits') {
+    handleAddLogicalUnit();
   }
 }
+
+const handleAddLogicalUnit = async () => {
+  await nextTick();
+  emit('add-logical-unit', currentPath.value);
+};
 
 const handleAddRelation = async () => {
   await nextTick();

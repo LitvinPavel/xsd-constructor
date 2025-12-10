@@ -13,6 +13,13 @@
       />
     </div>
 
+    <div
+      v-if="errorMessage"
+      class="mb-4 rounded-md border border-red-200 bg-red-50 text-red-800 px-4 py-3"
+    >
+      {{ errorMessage }}
+    </div>
+
     <!-- Основная форма (для сложных элементов) -->
     <div v-if="Object.keys(schema.elements).length > 0" class="mb-6">
       <form class="bg-white rounded-lg shadow p-4" @submit.prevent.stop>
@@ -77,6 +84,7 @@ import XSDGroup from '@/components/XSDGroup.vue';
 const { 
   schema, 
   generatedXML, 
+  errorMessage,
   generateXML, 
   handleFileUpload, 
   updateElementValue, 

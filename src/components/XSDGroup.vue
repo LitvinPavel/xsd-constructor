@@ -1,5 +1,9 @@
 <template>
-  <div class="mb-4" :class="[level === 0 ? 'p-4' : `ml-${level * 2} pl-4`]">
+  <div
+    class="mb-4"
+    :class="level === 0 ? 'p-4' : 'pl-4'"
+    :style="level > 0 ? { marginLeft: `${level * 8}px` } : undefined"
+  >
     <div v-if="!element.type && element.complexType?.sequence" class="w-full">
       <div
         v-if="element.annotation?.documentation"
@@ -65,7 +69,6 @@
           :element="element"
           @update-value="emit('update-value', currentPath, $event)"
         />
-
         <template v-else-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
@@ -139,6 +142,7 @@
           >
             <BaseFieldSelect
               v-if="attr.simpleType?.restriction?.enumerations"
+              :key="`${currentPath}-${attr.name}-select`"
               v-model="attr.value"
               :options="attr.simpleType.restriction.enumerations"
               :name="attr.name"
@@ -148,6 +152,7 @@
             />
             <BaseFieldInput
               v-else-if="attr.type"
+              :key="`${currentPath}-${attr.name}-input`"
               :value="attr.value"
               :name="attr.name"
               :label="attr.annotation.documentation"
@@ -162,6 +167,7 @@
 
     <BaseFieldSelect
       v-else-if="element.type && isComplexType(element.type)"
+      :key="`${currentPath}-${element.name}`"
       v-model="selectedComplexTypeId"
       :name="element.name"
       :label="element.annotation.documentation"
@@ -182,18 +188,40 @@
         />
       </div>
     </BaseFieldSelect>
-    <div v-else-if="element.name === 'TailObjectId' || element.name === 'HeadObjectId'">
-      <EntityIdFieldSelect :name="element.name" :label="element.annotation.documentation" @update-value="handleSelectEntity" />
-    </div>
-    <BaseFieldInput
-      v-else-if="element.type || element.simpleType"
-      :value="element.value || ''"
+    <EntityIdFieldSelect
+      v-else-if="element.name === 'TailObjectId' || element.name === 'HeadObjectId'"
+      :key="`${currentPath}-${element.name}-entityId`"
       :name="element.name"
-      :label="element.annotation?.documentation"
-      :type="getInputType(element.type)"
-      :pattern="element.pattern || element.simpleType?.restriction?.pattern"
-      @input="handleInputChange"
+      :label="element.annotation.documentation"
+      :element-path="currentPath"
+      @update-value="handleSelectEntity"
     />
+    <div v-else-if="element.name === 'PRuleLogicalUnit'">
+      <PRuleLogicalUnitField :element="element" :path="currentPath" @update-value="emit('update-value', currentPath, $event)" />
+    </div>
+    <template v-else-if="element.type || element.simpleType">
+      <BaseFieldSelect
+        v-if="element.simpleType?.restriction?.enumerations"
+        :value="element.value"
+        :key="`${currentPath}-${element.name}-select`"
+        :options="element.simpleType.restriction.enumerations"
+        :name="element.name"
+        :label="element.annotation.documentation"
+        option-key="value"
+        label-key="value"
+        @update:modelValue="handleInputChange"
+      />
+      <BaseFieldInput
+        v-else
+        :key="`${currentPath}-${element.name}-input`"
+        :value="element.value || ''"
+        :name="element.name"
+        :label="element.annotation?.documentation"
+        :type="getInputType(element.type)"
+        :pattern="element.pattern || element.simpleType?.restriction?.pattern"
+        @input="handleInputChange"
+      />
+    </template>
 
     <AddEntityModal
       v-model="showEntitySelector"
@@ -224,6 +252,7 @@ import BaseFieldInput from "./fields/BaseFieldInput.vue";
 import AddEntityModal from "./modals/AddEntityModal.vue";
 import AddPropertyModal from "./modals/AddPropertyModal.vue";
 import EntityIdFieldSelect from "./fields/EntityIdFieldSelect.vue";
+import PRuleLogicalUnitField from "./fields/PRuleLogicalUnitField.vue";
 
 interface Props {
   element: any;
@@ -307,7 +336,7 @@ const getComplexTypeDefinition = (typeName: string) => {
 const handleSelectEntity = (value: string | undefined) => {
   emit("update-value", currentPath.value, value);
 }
-const handleInputChange = (value: string | number | boolean) => {
+const handleInputChange = (value?: string | number | boolean) => {
   const currentValue = props.isAttributeValue ? { attributes: value } : value;
   emit("update-value", currentPath.value, currentValue);
 };

@@ -1,5 +1,5 @@
 // composables/useForm.ts
-import { ref, reactive, nextTick } from "vue";
+import { ref, reactive, nextTick, markRaw } from "vue";
 import { XSDParser } from "@/utils/xsdParser";
 import { generateXMLWithValidation } from "@/utils/xmlGenerator";
 import { deepCopyElement, getNestedValue } from "@/utils/xsdUtils";
@@ -13,10 +13,13 @@ export function useForm() {
     entityStructur: {},
     propertyStructur: {},
     relationStructur: {},
+    pRuleLogicalUnits: {},
   });
 
   const generatedXML = ref<string>("");
   const elementValues = reactive<{ [path: string]: any }>({});
+  const elementPathMap = new Map<string, any>();
+  const errorMessage = ref<string | null>(null);
 
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -32,50 +35,62 @@ export function useForm() {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       try {
+        errorMessage.value = null;
         const content = await readFileContent(file);
         parseXSD(content);
       } catch (error) {
         console.error("Error reading file:", error);
+        errorMessage.value = "Не удалось прочитать XSD файл";
       }
     }
   };
 
   const parseXSD = (xsdContent: string): void => {
-    const parser = new XSDParser();
-    const parsedSchema = parser.parseXSDToJSON(xsdContent);
-    const complexTypeDefinitions = parser.getComplexTypeDefinitions(
-      parser["parser"].parse(xsdContent)
-    );
-    const get = (path: string) => deepCopyElement(getNestedValue(schema, path));
+    try {
+      const parser = new XSDParser();
+      const { schema: parsedSchema, complexTypeDefinitions } =
+        parser.parseWithDefinitions(xsdContent);
+      const get = (path: string) =>
+        deepCopyElement(getNestedValue(schema, path));
 
-    Object.keys(schema.elements).forEach((key) => delete schema.elements[key]);
-    Object.keys(schema.complexTypes).forEach(
-      (key) => delete schema.complexTypes[key]
-    );
-    Object.keys(schema.simpleTypes).forEach(
-      (key) => delete schema.simpleTypes[key]
-    );
-    Object.keys(elementValues).forEach((key) => delete elementValues[key]);
+      Object.keys(schema.elements).forEach(
+        (key) => delete schema.elements[key]
+      );
+      Object.keys(schema.complexTypes).forEach(
+        (key) => delete schema.complexTypes[key]
+      );
+      Object.keys(schema.simpleTypes).forEach(
+        (key) => delete schema.simpleTypes[key]
+      );
+      Object.keys(elementValues).forEach((key) => delete elementValues[key]);
+      elementPathMap.clear();
 
-    Object.assign(schema, parsedSchema);
-    Object.assign(schema.complexTypes, complexTypeDefinitions);
-    Object.assign(schema, {
-      entityStructur: get(
-        "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Entities.complexType.sequence.Entity"
-      ),
-      propertyStructur: get(
-        "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Entities.complexType.sequence.Entity.complexType.sequence.Properties.complexType.sequence.Property"
-      ),
-      relationStructur: get(
-        "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Relations.complexType.sequence.Relation"
-      ),
-      logicalUnitStructur: get(
-        "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit"
-      ),
-    });
+      Object.assign(schema, parsedSchema);
+      Object.assign(schema.complexTypes, markRaw(complexTypeDefinitions));
+      Object.assign(schema, {
+        entityStructur: get(
+          "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Entities.complexType.sequence.Entity"
+        ),
+        propertyStructur: get(
+          "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Entities.complexType.sequence.Entity.complexType.sequence.Properties.complexType.sequence.Property"
+        ),
+        relationStructur: get(
+          "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit.complexType.sequence.Relations.complexType.sequence.Relation"
+        ),
+        logicalUnitStructur: get(
+          "elements.Requirement.complexType.sequence.DMODEL.complexType.sequence.LogicalUnits.complexType.sequence.LogicalUnit"
+        ),
+      });
 
-    removeDefaultDMODELElements();
-    initializeElementValues(schema.elements);
+      removeDefaultDMODELElements();
+      addPRuleFieldsToLogicalUnits(schema.elements);
+      initializeElementValues(schema.elements);
+      errorMessage.value = null;
+    } catch (error) {
+      console.error("Error parsing XSD:", error);
+      errorMessage.value =
+        "Не удалось разобрать XSD: " + (error as Error).message;
+    }
   };
 
   const removeDefaultDMODELElements = () => {
@@ -117,60 +132,93 @@ export function useForm() {
     Object.values(schema.elements).forEach(processElement);
   };
 
-  const updateElementValue = (elementPath: string, value: any) => {
-    console.log("Updating element value:", elementPath, value);
-    elementValues[elementPath] = value;
-    updateSchemaElementValue(schema.elements, elementPath, value);
+  const ensurePRuleLogicalUnitField = (logicalUnit: any) => {
+    if (!logicalUnit?.complexType?.sequence) return;
+    if (logicalUnit.complexType.sequence.PRuleLogicalUnit) return;
+
+    logicalUnit.complexType.sequence.PRuleLogicalUnit = {
+      name: "PRuleLogicalUnit",
+      annotation: {
+        documentation: "Авто правило логической единицы (не сохраняется в XML)",
+      },
+      type: "xs:string",
+      value: "",
+    };
   };
 
-  const updateSchemaElementValue = (
+  const addPRuleFieldsToLogicalUnits = (
     elements: { [key: string]: any },
-    path: string,
-    value: any
-  ): boolean => {
-    const pathParts = path.split(".");
-    const currentKey = pathParts[0] as string;
-    const remainingPath = pathParts.slice(1).join(".");
+    parentPath: string = ""
+  ) => {
+    Object.entries(elements || {}).forEach(([key, element]) => {
+      const currentPath = parentPath ? `${parentPath}.${key}` : key;
 
-    if (elements[currentKey]) {
-      if (remainingPath === "") {
-        elements[currentKey].value = value;
-        return true;
-      } else {
-        const element = elements[currentKey];
-        console.log(element);
-
-        if (element.complexType?.complexContent?.extension?.sequence) {
-          const found = updateSchemaElementValue(
-            element.complexType.complexContent.extension.sequence,
-            remainingPath,
-            value
-          );
-          if (found) return true;
-        }
-
-        if (element.complexType?.sequence) {
-          return updateSchemaElementValue(
-            element.complexType.sequence,
-            remainingPath,
-            value
-          );
-        }
-        if (element.complexType?.all) {
-          return updateSchemaElementValue(
-            element.complexType.all,
-            remainingPath,
-            value
-          );
-        }
-        if (element.complexType?.choice?.elements) {
-          return updateSchemaElementValue(
-            element.complexType.choice.elements,
-            remainingPath,
-            value
-          );
-        }
+      if (element.name === "LogicalUnit") {
+        ensurePRuleLogicalUnitField(element);
       }
+
+      if (element.complexType?.sequence) {
+        addPRuleFieldsToLogicalUnits(element.complexType.sequence, currentPath);
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        addPRuleFieldsToLogicalUnits(
+          element.complexType.complexContent.extension.sequence,
+          currentPath
+        );
+      }
+      if (element.complexType?.all) {
+        addPRuleFieldsToLogicalUnits(element.complexType.all, currentPath);
+      }
+      if (element.complexType?.choice?.elements) {
+        addPRuleFieldsToLogicalUnits(
+          element.complexType.choice.elements,
+          currentPath
+        );
+      }
+    });
+  };
+
+  const updateElementValue = (elementPath: string, value: any) => {
+    elementValues[elementPath] = value;
+    const targetElement = elementPathMap.get(elementPath);
+    if (targetElement) {
+      targetElement.value = value;
+    } else {
+      updateSchemaElementValue(elementPath, value);
+    }
+
+    if (
+      elementPath.endsWith("PropertyCond") ||
+      elementPath.endsWith("RelationCond")
+    ) {
+
+      const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as string;
+      schema.pRuleLogicalUnits = {
+        ...schema.pRuleLogicalUnits,
+        [logicalUnitId]: {
+          ...schema.pRuleLogicalUnits?.[logicalUnitId],
+          [value.ConditionUid]: value.ConditionRole,
+        },
+      };
+    } else if (elementPath.endsWith("RelationRole")) {
+      const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as string;
+      const relationUid = elementPath.match(/Relation_\d+/)?.[0] as string;
+
+      schema.pRuleLogicalUnits = {
+        ...schema.pRuleLogicalUnits,
+        [logicalUnitId]: {
+          ...schema.pRuleLogicalUnits?.[logicalUnitId],
+          [relationUid]: value,
+        },
+      };
+    }
+  };
+
+  const updateSchemaElementValue = (path: string, value: any): boolean => {
+    const targetElement = elementPathMap.get(path);
+    if (targetElement) {
+      targetElement.value = value;
+      return true;
     }
     return false;
   };
@@ -181,6 +229,7 @@ export function useForm() {
   ) => {
     Object.entries(elements).forEach(([key, element]) => {
       const currentPath = parentPath ? `${parentPath}.${key}` : key;
+      elementPathMap.set(currentPath, element);
 
       if (
         element.complexType?.complexContent?.extension?.base === "ReqElement"
@@ -254,13 +303,13 @@ export function useForm() {
 
   const handleAddEntity = async (elementPath: string, entity: any) => {
     await nextTick();
-    const targetElement = findElementByPath(schema.elements, elementPath);
+    const targetElement = elementPathMap.get(elementPath);
 
     if (targetElement && targetElement.complexType?.sequence) {
       const { EntityID, EntityName, EntityUid, Properties } =
         schema.entityStructur?.complexType?.sequence || {};
       const newKey = `Entity_${Date.now()}`;
-      const newItem = {
+      const newItem = reactive({
         name: "Entity",
         annotation: entity.annotation,
         complexType: {
@@ -283,8 +332,11 @@ export function useForm() {
             },
           },
         },
-      };
-      targetElement.complexType.sequence[newKey] = newItem;
+      });
+      targetElement.complexType.sequence = reactive({
+        ...targetElement.complexType.sequence,
+        [newKey]: newItem,
+      });
       initializeElementValues({ [newKey]: newItem }, elementPath);
     }
   };
@@ -292,13 +344,13 @@ export function useForm() {
   const handleAddProperty = async (elementPath: string, property: any) => {
     await nextTick();
 
-    const targetElement = findElementByPath(schema.elements, elementPath);
+    const targetElement = elementPathMap.get(elementPath);
 
     if (targetElement && targetElement.complexType?.sequence) {
       const newKey = `Property_${Date.now()}`;
       const { PropertyID, PropertyName, PropertyUid, PropertyCond } =
         schema.propertyStructur?.complexType?.sequence || {};
-      const newItem = {
+      const newItem = reactive({
         name: "Property",
         annotation: property.annotation,
         complexType: {
@@ -321,9 +373,12 @@ export function useForm() {
             },
           },
         },
-      };
+      });
 
-      targetElement.complexType.sequence[newKey] = newItem;
+      targetElement.complexType.sequence = reactive({
+        ...targetElement.complexType.sequence,
+        [newKey]: newItem,
+      });
       initializeElementValues({ [newKey]: newItem }, elementPath);
     }
   };
@@ -331,11 +386,11 @@ export function useForm() {
   const handleAddRelation = async (elementPath: string) => {
     await nextTick();
 
-    const targetElement = findElementByPath(schema.elements, elementPath);
+    const targetElement = elementPathMap.get(elementPath);
 
     if (targetElement && targetElement.complexType?.sequence) {
       const newKey = `Relation_${Date.now()}`;
-      const newItem = {
+      const newItem = reactive({
         ...schema.relationStructur,
         complexType: {
           ...schema.relationStructur.complexType,
@@ -347,15 +402,18 @@ export function useForm() {
             },
           },
         },
-      };
-      targetElement.complexType.sequence[newKey] = newItem;
+      });
+      targetElement.complexType.sequence = reactive({
+        ...targetElement.complexType.sequence,
+        [newKey]: newItem,
+      });
       initializeElementValues({ [newKey]: newItem }, elementPath);
     }
   };
 
   const handleAddLogicalUnit = async (elementPath: string) => {
     await nextTick();
-    const targetElement = findElementByPath(schema.elements, elementPath);
+    const targetElement = elementPathMap.get(elementPath);
 
     if (
       targetElement &&
@@ -363,7 +421,7 @@ export function useForm() {
       schema.logicalUnitStructur
     ) {
       const newKey = `LogicalUnit_${Date.now()}`;
-      const newItem = {
+      const newItem = reactive({
         ...schema.logicalUnitStructur,
         complexType: {
           ...schema.logicalUnitStructur.complexType,
@@ -379,9 +437,12 @@ export function useForm() {
             },
           },
         },
-      };
-      console.log(newItem)
-      targetElement.complexType.sequence[newKey] = newItem;
+      });
+      ensurePRuleLogicalUnitField(newItem);
+      targetElement.complexType.sequence = reactive({
+        ...targetElement.complexType.sequence,
+        [newKey]: newItem,
+      });
       initializeElementValues({ [newKey]: newItem }, elementPath);
     }
   };
@@ -435,74 +496,22 @@ export function useForm() {
     }
   };
 
-  const findElementByPath = (
-    elements: { [key: string]: any },
-    path: string
-  ): any | null => {
-    const pathParts = path.split(".");
-
-    const findInElements = (
-      currentElements: { [key: string]: any },
-      parts: string[]
-    ): any | null => {
-      if (parts.length === 0) return null;
-
-      const currentPart = parts[0] as string;
-      const remainingParts = parts.slice(1);
-
-      if (currentElements[currentPart]) {
-        const element = currentElements[currentPart];
-
-        if (remainingParts.length === 0) {
-          return element;
-        }
-
-        if (element.complexType?.complexContent?.extension?.sequence) {
-          const found = findInElements(
-            element.complexType.complexContent.extension.sequence,
-            remainingParts
-          );
-          if (found) return found;
-        }
-
-        if (element.complexType?.sequence) {
-          const found = findInElements(
-            element.complexType.sequence,
-            remainingParts
-          );
-          if (found) return found;
-        }
-        if (element.complexType?.all) {
-          const found = findInElements(element.complexType.all, remainingParts);
-          if (found) return found;
-        }
-        if (element.complexType?.choice?.elements) {
-          const found = findInElements(
-            element.complexType.choice.elements,
-            remainingParts
-          );
-          if (found) return found;
-        }
-      }
-
-      return null;
-    };
-
-    return findInElements(elements, pathParts);
-  };
-
   const generateXML = () => {
     try {
+      errorMessage.value = null;
       generatedXML.value = generateXMLWithValidation(schema);
     } catch (error) {
       console.error("Error generating XML:", error);
-      generatedXML.value = "Ошибка генерации XML: " + (error as Error).message;
+      const message = (error as Error).message || "Неизвестная ошибка";
+      errorMessage.value = "Ошибка генерации XML: " + message;
+      generatedXML.value = "Ошибка генерации XML: " + message;
     }
   };
 
   return {
     schema,
     generatedXML,
+    errorMessage,
     generateXML,
     handleFileUpload,
     updateElementValue,

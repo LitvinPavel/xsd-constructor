@@ -31,57 +31,79 @@ export class XSDParser {
     });
   }
 
+  /**
+   * Парсит XSD один раз и возвращает схему и определения complexType.
+   */
+  public parseWithDefinitions(xsdContent: string): {
+    schema: XSDSchema;
+    complexTypeDefinitions: { [key: string]: XSDComplexType };
+  } {
+    const parsedData = this.parseRaw(xsdContent);
+    return {
+      schema: this.buildSchemaFromParsed(parsedData),
+      complexTypeDefinitions: this.getComplexTypeDefinitionsFromParsed(parsedData)
+    };
+  }
+
+  /**
+   * Старый API, оставлен для совместимости.
+   */
   public parseXSDToJSON(xsdContent: string): XSDSchema {
+    const parsedData = this.parseRaw(xsdContent);
+    return this.buildSchemaFromParsed(parsedData);
+  }
+
+  private parseRaw(xsdContent: string): any {
     try {
       const validationResult = XMLValidator.validate(xsdContent);
       if (validationResult !== true) {
         throw new Error(`Invalid XML: ${validationResult.err.msg}`);
       }
 
-      const parsedData = this.parser.parse(xsdContent);
-      const schema = parsedData['xs:schema'];
-      
-      const result: XSDSchema = {
-        elements: {},
-        complexTypes: {},
-        simpleTypes: {},
-        entityStructur: {},
-        propertyStructur: {},
-        relationStructur: {}
-      };
-
-      // Process elements
-      if (schema['xs:element']) {
-        const elements = Array.isArray(schema['xs:element']) 
-          ? schema['xs:element'] 
-          : [schema['xs:element']];
-        result.elements = this.processElements(elements);
-      }
-
-      // Process complex types
-      if (schema['xs:complexType']) {
-        const complexTypes = Array.isArray(schema['xs:complexType']) 
-          ? schema['xs:complexType'] 
-          : [schema['xs:complexType']];
-        result.complexTypes = this.processComplexTypes(complexTypes);
-      }
-
-      // Process simple types
-      if (schema['xs:simpleType']) {
-        const simpleTypes = Array.isArray(schema['xs:simpleType']) 
-          ? schema['xs:simpleType'] 
-          : [schema['xs:simpleType']];
-        result.simpleTypes = this.processSimpleTypes(simpleTypes);
-      }
-
-      return result;
+      return this.parser.parse(xsdContent);
     } catch (error) {
       console.error('Error parsing XSD:', error);
       throw error;
     }
   }
 
-  public getComplexTypeDefinitions(parsedData: any): { [key: string]: XSDComplexType } {
+  private buildSchemaFromParsed(parsedData: any): XSDSchema {
+    const schema = parsedData['xs:schema'];
+    
+    const result: XSDSchema = {
+      elements: {},
+      complexTypes: {},
+      simpleTypes: {},
+      entityStructur: {},
+      propertyStructur: {},
+      relationStructur: {}
+    };
+
+    if (schema['xs:element']) {
+      const elements = Array.isArray(schema['xs:element']) 
+        ? schema['xs:element'] 
+        : [schema['xs:element']];
+      result.elements = this.processElements(elements);
+    }
+
+    if (schema['xs:complexType']) {
+      const complexTypes = Array.isArray(schema['xs:complexType']) 
+        ? schema['xs:complexType'] 
+        : [schema['xs:complexType']];
+      result.complexTypes = this.processComplexTypes(complexTypes);
+    }
+
+    if (schema['xs:simpleType']) {
+      const simpleTypes = Array.isArray(schema['xs:simpleType']) 
+        ? schema['xs:simpleType'] 
+        : [schema['xs:simpleType']];
+      result.simpleTypes = this.processSimpleTypes(simpleTypes);
+    }
+
+    return result;
+  }
+
+  public getComplexTypeDefinitionsFromParsed(parsedData: any): { [key: string]: XSDComplexType } {
     const schema = parsedData['xs:schema'];
     const definitions: { [key: string]: XSDComplexType } = {};
 
@@ -192,7 +214,12 @@ export class XSDParser {
     }
 
     if (complexType['xs:sequence']) {
-      structure.sequence = this.extractSequenceOrAllStructure(complexType['xs:sequence']);
+      const seq = this.extractSequenceOrAllStructure(complexType['xs:sequence']);
+      if (seq.__choice) {
+        structure.choice = seq.__choice;
+        delete seq.__choice;
+      }
+      structure.sequence = seq;
     }
 
     if (complexType['xs:all']) {
@@ -226,7 +253,12 @@ export class XSDParser {
       }
       
       if (extension['xs:sequence']) {
-        structure.extension.sequence = this.extractSequenceOrAllStructure(extension['xs:sequence']);
+        const seq = this.extractSequenceOrAllStructure(extension['xs:sequence']);
+        if (seq.__choice) {
+          structure.extension.choice = seq.__choice;
+          delete seq.__choice;
+        }
+        structure.extension.sequence = seq;
       }
     }
     
@@ -235,6 +267,10 @@ export class XSDParser {
 
   private extractSequenceOrAllStructure(sequenceOrAll: any): any {
     const structure: any = {};
+    
+    if (sequenceOrAll['xs:choice']) {
+      structure.__choice = this.extractChoiceStructure(sequenceOrAll['xs:choice']);
+    }
     
     if (sequenceOrAll['xs:element']) {
       const elements = Array.isArray(sequenceOrAll['xs:element']) 

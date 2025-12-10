@@ -3,15 +3,13 @@
   <div class="complex-type-instance-view">
     <!-- Основные поля -->
     <div v-for="(value, key) in data" :key="key">
-      <!-- Пропускаем атрибуты - они отображаются отдельно -->
       <template v-if="`${key}` !== 'attributes'">
         <div class="flex items-start py-1 border-b border-gray-100">
-          <div class="w-1/3 font-medium text-sm text-gray-700 pr-2">
+          <div class="font-medium text-sm text-gray-700 pr-2">
             {{ getFieldLabel(`${key}`) }}
           </div>
-          <div class="w-2/3 text-sm">
+          <div class="flex-grow text-right text-sm">
             <template v-if="isComplexTypeValue(value)">
-              <!-- Рекурсивный вызов для вложенных complexType -->
               <ComplexTypeInstanceView 
                 :data="value" 
                 :type-definition="getNestedTypeDefinition(`${key}`)"
@@ -35,12 +33,12 @@
 
     <!-- Атрибуты -->
     <div v-if="data?.attributes && Object.keys(data.attributes).length > 0" class="mt-2 pt-2 border-t border-gray-200">
-      <div class="text-xs font-semibold text-gray-500 mb-2">Атрибуты:</div>
+      <div class="text-left text-xs font-semibold text-gray-500 mb-2">Атрибуты:</div>
       <div v-for="(value, key) in data.attributes" :key="`attr_${key}`" class="flex items-center py-1">
-        <div class="w-1/3 font-medium text-sm text-gray-600 pr-2 text-xs">
-          {{ key }}
+        <div class="font-medium text-sm text-gray-600 pr-2 text-xs">
+          {{ getFieldLabel(`${key}`) }}
         </div>
-        <div class="w-2/3 text-sm">
+        <div class="flex-grow text-right text-sm">
           <span class="text-gray-700">{{ formatValue(value) }}</span>
         </div>
       </div>
@@ -77,7 +75,6 @@ const hasData = computed(() => {
 
 const getFieldLabel = (fieldKey: string): string => {
   if (!props.typeDefinition) return fieldKey;
-  
   // Ищем документацию в all
   if (props.typeDefinition.all?.[fieldKey]?.annotation?.documentation) {
     return props.typeDefinition.all[fieldKey].annotation.documentation;
@@ -92,6 +89,10 @@ const getFieldLabel = (fieldKey: string): string => {
   if (props.typeDefinition.choice?.elements?.[fieldKey]?.annotation?.documentation) {
     return props.typeDefinition.choice.elements[fieldKey].annotation.documentation;
   }
+
+  if (props.typeDefinition.attributes?.[fieldKey]?.annotation?.documentation) {
+    return props.typeDefinition.attributes?.[fieldKey].annotation.documentation;
+  }
   
   return fieldKey;
 };
@@ -105,7 +106,7 @@ const isComplexTypeValue = (value: any): boolean => {
 
 const getNestedTypeDefinition = (fieldKey: string): any => {
   if (!props.typeDefinition) return null;
-  
+
   // Ищем в all
   if (props.typeDefinition.all?.[fieldKey]?.complexType) {
     return props.typeDefinition.all[fieldKey].complexType;
@@ -114,6 +115,10 @@ const getNestedTypeDefinition = (fieldKey: string): any => {
   // Ищем в sequence
   if (props.typeDefinition.sequence?.[fieldKey]?.complexType) {
     return props.typeDefinition.sequence[fieldKey].complexType;
+  }
+
+  if (props.typeDefinition.choice?.elements?.[fieldKey]?.complexType) {
+    return props.typeDefinition.choice.elements[fieldKey].complexType;
   }
   
   return null;

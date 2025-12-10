@@ -123,7 +123,8 @@ export const mockData: { [key: string]: ComplexTypeInstance[] } = {
           },
           Value: 10.5,
           UnitsOfMeasurement: 'мм'
-        }
+        },
+        ConditionRole: 'посылка'
       }
     },
     {
@@ -141,7 +142,8 @@ export const mockData: { [key: string]: ComplexTypeInstance[] } = {
           },
           Value: 5.2,
           UnitsOfMeasurement: 'м'
-        }
+        },
+        ConditionRole: 'следствие'
       }
     }
   ],

@@ -10,7 +10,6 @@
       :disabled="disabled"
       :placeholder="`Введите значение для поля ${name}`"
       @value-changed="onInput"
-      :height="100"
       class="flex-1"
     />
     <DxNumberBox
@@ -53,6 +52,7 @@
       class="flex-1"
       :input-attr="{ class: 'flex-1' }"
     />
+    <slot />
   </div>
 </template>
 

@@ -11,6 +11,7 @@ export interface XSDElement {
   complexType?: XSDComplexType;
   simpleType?: XSDSimpleType;
   value?: any;
+  computedValue?: { [key: string]: string };
 }
 
 export interface XSDComplexType {
@@ -59,6 +60,10 @@ export interface XSDEnumeration {
   annotation?: XSDAnnotation;
 }
 
+export interface PRuleLogicalUnit {
+  [key: string]: string;
+}
+
 export interface XSDSchema {
   elements: { [key: string]: XSDElement };
   complexTypes: { [key: string]: XSDComplexType };
@@ -67,6 +72,7 @@ export interface XSDSchema {
   propertyStructur: Partial<XSDElement>;
   relationStructur: Partial<XSDElement>;
   logicalUnitStructur?: Partial<XSDElement>;
+  pRuleLogicalUnits?: { [key: string]: PRuleLogicalUnit };
 }
 
 export interface ComplexTypeInstance {

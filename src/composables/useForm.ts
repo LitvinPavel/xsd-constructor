@@ -83,6 +83,13 @@ export function useForm() {
       });
 
       removeDefaultDMODELElements();
+      applyConditionTypeToCondFields(schema.elements);
+      applyConditionTypeToCondFields(
+        schema.propertyStructur?.complexType?.sequence || {}
+      );
+      applyConditionTypeToCondFields(
+        schema.relationStructur?.complexType?.sequence || {}
+      );
       addPRuleFieldsToLogicalUnits(schema.elements);
       initializeElementValues(schema.elements);
       errorMessage.value = null;
@@ -182,6 +189,47 @@ export function useForm() {
     });
   };
 
+  const applyConditionTypeToCondFields = (
+    elements: { [key: string]: any },
+    parentPath: string = ""
+  ) => {
+    const conditionType =
+      schema.complexTypes?.ConditionType || schema.complexTypes?.Condition;
+    if (!conditionType) return;
+
+    Object.entries(elements || {}).forEach(([key, element]) => {
+      const currentPath = parentPath ? `${parentPath}.${key}` : key;
+
+      if (element.name === "PropertyCond" || element.name === "RelationCond") {
+        element.type = undefined;
+        element.simpleType = undefined;
+        element.complexType = deepCopyElement(conditionType);
+      }
+
+      if (element.complexType?.sequence) {
+        applyConditionTypeToCondFields(
+          element.complexType.sequence,
+          currentPath
+        );
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        applyConditionTypeToCondFields(
+          element.complexType.complexContent.extension.sequence,
+          currentPath
+        );
+      }
+      if (element.complexType?.all) {
+        applyConditionTypeToCondFields(element.complexType.all, currentPath);
+      }
+      if (element.complexType?.choice?.elements) {
+        applyConditionTypeToCondFields(
+          element.complexType.choice.elements,
+          currentPath
+        );
+      }
+    });
+  };
+
   const getPRulesSequence = () =>
     getNestedValue(
       schema,
@@ -241,7 +289,6 @@ export function useForm() {
       elementPath.endsWith("PropertyCond") ||
       elementPath.endsWith("RelationCond")
     ) {
-
       const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as string;
       schema.pRuleLogicalUnits = {
         ...schema.pRuleLogicalUnits,
@@ -250,6 +297,37 @@ export function useForm() {
           [value.ConditionUid]: value.ConditionRole,
         },
       };
+    } else if (
+      elementPath.includes("PropertyCond.") ||
+      elementPath.includes("RelationCond.")
+    ) {
+      const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as string;
+      if (logicalUnitId) {
+        const segments = elementPath.split(".");
+        const condIndex = segments.findIndex((seg) =>
+          ["PropertyCond", "RelationCond"].includes(seg)
+        );
+        const condRootPath = segments.slice(0, condIndex + 1).join(".");
+
+        const conditionUid =
+          elementPath.endsWith("ConditionUid")
+            ? value
+            : elementValues[`${condRootPath}.ConditionUid`];
+        const conditionRole =
+          elementPath.endsWith("ConditionRole")
+            ? value
+            : elementValues[`${condRootPath}.ConditionRole`];
+
+        if (conditionUid && conditionRole) {
+          schema.pRuleLogicalUnits = {
+            ...schema.pRuleLogicalUnits,
+            [logicalUnitId]: {
+              ...schema.pRuleLogicalUnits?.[logicalUnitId],
+              [conditionUid]: conditionRole,
+            },
+          };
+        }
+      }
     } else if (elementPath.endsWith("RelationRole")) {
       const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as string;
       const relationUid = elementPath.match(/Relation_\d+/)?.[0] as string;
@@ -316,7 +394,34 @@ export function useForm() {
         }
 
         elementValues[currentPath] = element.value;
-      } else if (element.value !== undefined) {
+      } else {
+        if (
+          (element.name === "EntityUid" ||
+            element.name === "PropertyUid" ||
+            element.name === "RelationUid" ||
+            element.name === "ConditionUid") &&
+          (element.value === undefined || element.value === "")
+        ) {
+          generateUniqueIds(element, element.name);
+        }
+
+        if (element.value !== undefined) {
+          elementValues[currentPath] = element.value;
+        }
+      }
+
+      if (element.name === "Condition" && !element.value) {
+        generateUniqueIds(element, "Condition");
+        elementValues[currentPath] = element.value;
+      }
+
+      if (element.name === "Entity" && !element.value) {
+        generateUniqueIds(element, "Entity");
+        elementValues[currentPath] = element.value;
+      }
+
+      if (element.name === "Property" && !element.value) {
+        generateUniqueIds(element, "Property");
         elementValues[currentPath] = element.value;
       }
 
@@ -342,38 +447,34 @@ export function useForm() {
     });
   };
 
-  const handleAddEntity = async (elementPath: string, entity: any) => {
+  const handleAddEntity = async (elementPath: string) => {
     await nextTick();
     const targetElement = elementPathMap.get(elementPath);
 
-    if (targetElement && targetElement.complexType?.sequence) {
-      const { EntityID, EntityName, EntityUid, Properties } =
-        schema.entityStructur?.complexType?.sequence || {};
+    if (targetElement && targetElement.complexType?.sequence && schema.entityStructur) {
       const newKey = `Entity_${Date.now()}`;
-      const newItem = reactive({
-        name: "Entity",
-        annotation: entity.annotation,
-        complexType: {
-          sequence: {
-            EntityUid: {
-              ...EntityUid,
-              value: entity.data.EntityUid || `Object${Date.now()}`,
-            },
-            EntityName: {
-              ...EntityName,
-              value: entity.data.EntityName || "Новая сущность",
-            },
-            EntityID: {
-              ...EntityID,
-              value: entity.data.EntityID,
-            },
-            Properties: {
-              ...Properties,
-              complexType: { sequence: {} },
-            },
-          },
-        },
-      });
+      const newItem = reactive(deepCopyElement(schema.entityStructur));
+
+      if (newItem.complexType?.sequence) {
+        if (newItem.complexType.sequence.EntityUid) {
+          newItem.complexType.sequence.EntityUid.value = "";
+        }
+        if (newItem.complexType.sequence.EntityName) {
+          newItem.complexType.sequence.EntityName.value = "";
+        }
+        if (newItem.complexType.sequence.EntityID) {
+          newItem.complexType.sequence.EntityID.value = undefined;
+        }
+        if (newItem.complexType.sequence.Properties) {
+          newItem.complexType.sequence.Properties = reactive({
+            ...newItem.complexType.sequence.Properties,
+            complexType: { sequence: {} },
+          });
+        }
+
+        generateUniqueIds(newItem, "Entity");
+      }
+
       targetElement.complexType.sequence = reactive({
         ...targetElement.complexType.sequence,
         [newKey]: newItem,
@@ -382,39 +483,32 @@ export function useForm() {
     }
   };
 
-  const handleAddProperty = async (elementPath: string, property: any) => {
+  const handleAddProperty = async (elementPath: string) => {
     await nextTick();
 
     const targetElement = elementPathMap.get(elementPath);
 
-    if (targetElement && targetElement.complexType?.sequence) {
+    if (targetElement && targetElement.complexType?.sequence && schema.propertyStructur) {
       const newKey = `Property_${Date.now()}`;
-      const { PropertyID, PropertyName, PropertyUid, PropertyCond } =
-        schema.propertyStructur?.complexType?.sequence || {};
-      const newItem = reactive({
-        name: "Property",
-        annotation: property.annotation,
-        complexType: {
-          sequence: {
-            PropertyUid: {
-              ...PropertyUid,
-              value: property.data.PropertyUid || newKey,
-            },
-            PropertyName: {
-              ...PropertyName,
-              value: property.data.PropertyName || "Новое свойство",
-            },
-            PropertyID: {
-              ...PropertyID,
-              value: property.data.PropertyID,
-            },
-            PropertyCond: {
-              ...PropertyCond,
-              value: property.data.PropertyCond || [],
-            },
-          },
-        },
-      });
+      const newItem = reactive(deepCopyElement(schema.propertyStructur));
+
+      if (newItem.complexType?.sequence) {
+        if (newItem.complexType.sequence.PropertyUid) {
+          newItem.complexType.sequence.PropertyUid.value = "";
+        }
+        if (newItem.complexType.sequence.PropertyName) {
+          newItem.complexType.sequence.PropertyName.value = "";
+        }
+        if (newItem.complexType.sequence.PropertyID) {
+          newItem.complexType.sequence.PropertyID.value = undefined;
+        }
+        if (newItem.complexType.sequence.PropertyCond) {
+          newItem.complexType.sequence.PropertyCond.value = undefined;
+        }
+        applyConditionTypeToCondFields(newItem.complexType.sequence);
+
+        generateUniqueIds(newItem, "Property");
+      }
 
       targetElement.complexType.sequence = reactive({
         ...targetElement.complexType.sequence,
@@ -444,6 +538,7 @@ export function useForm() {
           },
         },
       });
+      applyConditionTypeToCondFields(newItem.complexType?.sequence || {});
       targetElement.complexType.sequence = reactive({
         ...targetElement.complexType.sequence,
         [newKey]: newItem,

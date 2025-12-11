@@ -3,17 +3,9 @@
     <label :for="fieldId" class="w-1/3 text-sm text-gray-600">
       {{ label }}
     </label>
-    <DxTextArea
-      v-if="fieldType === 'textarea'"
-      :id="fieldId"
-      :value="value"
-      :disabled="disabled"
-      :placeholder="`Введите значение для поля ${name}`"
-      @value-changed="onInput"
-      class="flex-1"
-    />
+    
     <DxNumberBox
-      v-else-if="type === 'number'"
+      v-if="type === 'number'"
       :id="fieldId"
       :value="value || null"
       :disabled="disabled"
@@ -42,15 +34,15 @@
       @value-changed="onInput"
       class="flex-1"
     />
-    <DxTextBox
+    <DxTextArea
       v-else
       :id="fieldId"
       :value="value"
       :disabled="disabled"
       :placeholder="`Введите значение для поля ${name}`"
       @value-changed="onInput"
+      :auto-resize-enabled="true"
       class="flex-1"
-      :input-attr="{ class: 'flex-1' }"
     />
     <slot />
   </div>
@@ -58,7 +50,6 @@
 
 <script setup lang="ts">
 import { useId } from "vue";
-import DxTextBox, { type DxTextBoxTypes } from "devextreme-vue/text-box";
 import DxNumberBox, { type DxNumberBoxTypes } from "devextreme-vue/number-box";
 import DxDateBox, { type DxDateBoxTypes } from "devextreme-vue/date-box";
 import DxTextArea, { type DxTextAreaTypes } from "devextreme-vue/text-area";
@@ -89,7 +80,6 @@ const fieldId = useId();
 
 function onInput(
   event:
-    | DxTextBoxTypes.ValueChangedEvent
     | DxNumberBoxTypes.ValueChangedEvent
     | DxDateBoxTypes.ValueChangedEvent
     | DxTextAreaTypes.ValueChangedEvent
@@ -100,7 +90,6 @@ function onInput(
 </script>
 
 <style scoped>
-.dx-textbox,
 .dx-numberbox,
 .dx-datebox,
 .dx-selectbox {

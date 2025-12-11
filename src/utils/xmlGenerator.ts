@@ -101,6 +101,16 @@ function processElementWithValidation(parent: any, element: any): void {
     }
   }
 
+  const selectedChoice = getSelectedChoiceChild(element);
+  if (selectedChoice?.child) {
+    if ((selectedChoice.child as XSDElement)?.skipInXml) {
+      // skip
+    } else if (hasContent(selectedChoice.child)) {
+      hasChildContent = true;
+      processElementWithValidation(currentNode, selectedChoice.child);
+    }
+  }
+
   if (element.complexType?.all) {
     for (const [_childKey, child] of Object.entries(element.complexType.all)) {
       if ((child as XSDElement)?.skipInXml) continue;
@@ -278,6 +288,16 @@ function processComplexTypeValue(parent: any, complexValue: any): void {
   }
 }
 
+function getSelectedChoiceChild(element: any): { key: string; child: any } | null {
+  const choice = element?.complexType?.choice;
+  if (!choice?.elements) return null;
+
+  const key = choice.selectedKey || Object.keys(choice.elements)[0];
+  if (!key) return null;
+
+  return { key, child: choice.elements[key] };
+}
+
 function isComplexType(typeName?: string): boolean {
   if (!typeName) return false;
   const complexTypes = [
@@ -327,6 +347,15 @@ function hasContent(element: any): boolean {
     const hasChildContent = Object.values(element.complexType.sequence)
       .some((child: any) => hasContent(child));
     if (hasChildContent) return true;
+  }
+
+  const choice = element.complexType?.choice;
+  if (choice?.elements) {
+    const key = choice.selectedKey || Object.keys(choice.elements)[0];
+    const choiceChild = key ? choice.elements[key] : undefined;
+    if (choiceChild && hasContent(choiceChild)) {
+      return true;
+    }
   }
   
   if (element.complexType?.all) {

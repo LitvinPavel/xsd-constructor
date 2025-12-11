@@ -12,10 +12,12 @@
         :display-expr="getDisplayExpr"
         :value-expr="optionKey"
         :disabled="disabled"
-        :show-clear-button="!isСannotEnpty"
+        :show-clear-button="true"
+        :required="isСannotEnpty"
         :placeholder="`Выберите значение для поля ${name}`"
         @value-changed="onValueChanged"
         class="flex-1"
+        no-data-text="Нет данных для выбора"
       />
       </div>
       <slot></slot>

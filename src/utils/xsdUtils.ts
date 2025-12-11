@@ -49,7 +49,7 @@ export function generateDefaultUid(elementName: string): string {
     'FormulaElement': 'Formula'
   };
   
-  const prefix = prefixMap[elementName] || 'Element';
+  const prefix = prefixMap[elementName] || elementName;
   return `${prefix}${Math.floor(Math.random() * 1000)}`;
 }
 

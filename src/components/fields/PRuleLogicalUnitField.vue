@@ -10,9 +10,10 @@
     >
       <DxCheckBox
         :id="fieldId"
-        v-model="isManualInput"
+        :value="isManualInput"
         text="Ручное заполнение"
         class="text-sm"
+        @value-changed="onToggleInputMode"
       />
     </BaseFieldInput>
   </div>
@@ -20,6 +21,7 @@
 
 <script setup lang="ts">
 import { inject, ref, useId, watch } from "vue";
+import type { ValueChangedEvent } from 'devextreme/ui/check_box';
 import type { XSDSchema, XSDElement } from "@/types";
 import BaseFieldInput from "@/components/fields/BaseFieldInput.vue";
 
@@ -40,14 +42,19 @@ const fieldId = useId();
 const isManualInput = ref<boolean>(false);
 
 const onChange = (e: string | number | boolean): void => {
-  console.log(e);
+  emit("update-value", e);
 };
 
-watch(
-  () => schema.pRuleLogicalUnits,
-  (newValue) => {
-    const logicalUnitId = props.path.match(/LogicalUnit_\d+/)?.[0];
-    const pRuleLogicalUnitMap = newValue?.[logicalUnitId as string];
+const onToggleInputMode = (e: ValueChangedEvent) => {
+  isManualInput.value = e.value;
+  if (!isManualInput.value) {
+    calculateValue();
+  }
+}
+
+const calculateValue = (): void => {
+  const logicalUnitId = props.path.match(/LogicalUnit_\d+/)?.[0];
+    const pRuleLogicalUnitMap = schema.pRuleLogicalUnits?.[logicalUnitId as string];
 
     const beforeThen: string[] = [];
     const afterThen: string[] = [];
@@ -76,6 +83,10 @@ watch(
     if (updatedValue) {
       emit("update-value", updatedValue);
     }
-  }
+}
+
+watch(
+  () => schema.pRuleLogicalUnits,
+  () => calculateValue()
 );
 </script>

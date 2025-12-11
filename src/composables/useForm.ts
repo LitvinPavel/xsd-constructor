@@ -2,7 +2,7 @@
 import { ref, reactive, nextTick, markRaw } from "vue";
 import { XSDParser } from "@/utils/xsdParser";
 import { generateXMLWithValidation } from "@/utils/xmlGenerator";
-import { deepCopyElement, getNestedValue } from "@/utils/xsdUtils";
+import { deepCopyElement, getNestedValue, generateDefaultUid } from "@/utils/xsdUtils";
 import type { XSDSchema } from "@/types";
 
 export function useForm() {
@@ -134,7 +134,10 @@ export function useForm() {
 
   const ensurePRuleLogicalUnitField = (logicalUnit: any) => {
     if (!logicalUnit?.complexType?.sequence) return;
-    if (logicalUnit.complexType.sequence.PRuleLogicalUnit) return;
+    if (logicalUnit.complexType.sequence.PRuleLogicalUnit) {
+      logicalUnit.complexType.sequence.PRuleLogicalUnit.skipInXml = true;
+      return;
+    }
 
     logicalUnit.complexType.sequence.PRuleLogicalUnit = {
       name: "PRuleLogicalUnit",
@@ -143,6 +146,7 @@ export function useForm() {
       },
       type: "xs:string",
       value: "",
+      skipInXml: true,
     };
   };
 
@@ -178,6 +182,52 @@ export function useForm() {
     });
   };
 
+  const getPRulesSequence = () =>
+    getNestedValue(
+      schema,
+      "elements.Requirement.complexType.sequence.PLOGIC.complexType.sequence.PRules.complexType.sequence"
+    );
+
+  const syncPRulesWithLogicalUnits = () => {
+    const prulesSequence = getPRulesSequence();
+    if (!prulesSequence || typeof prulesSequence !== "object") return;
+
+    const values = Object.entries(elementValues)
+      .filter(
+        ([path, val]) =>
+          path.endsWith("PRuleLogicalUnit") &&
+          val !== undefined &&
+          val !== null &&
+          val !== ""
+      )
+      .map(([, val]) => String(val));
+
+    const template =
+      prulesSequence.PRule || Object.values(prulesSequence || {})[0];
+    if (!template) return;
+
+    const nextSequence: Record<string, any> = {};
+    values.forEach((val, idx) => {
+      const key = generateDefaultUid('PRule_');
+      const prule = deepCopyElement(template);
+
+      if (prule.complexType?.sequence?.PRuleData) {
+        prule.complexType.sequence.PRuleData.value = val;
+      } else {
+        prule.value = val;
+      }
+
+      if (prule.complexType?.attributes?.PRuleID) {
+        prule.complexType.attributes.PRuleID.value = idx + 1;
+      }
+
+      nextSequence[key] = prule;
+    });
+
+    Object.keys(prulesSequence).forEach((key) => delete prulesSequence[key]);
+    Object.assign(prulesSequence, nextSequence);
+  };
+
   const updateElementValue = (elementPath: string, value: any) => {
     elementValues[elementPath] = value;
     const targetElement = elementPathMap.get(elementPath);
@@ -211,6 +261,8 @@ export function useForm() {
           [relationUid]: value,
         },
       };
+    } else if (elementPath.endsWith("PRuleLogicalUnit")) {
+      syncPRulesWithLogicalUnits();
     }
   };
 
@@ -258,7 +310,7 @@ export function useForm() {
         }
 
         if (!element.value.attributes.ReqElementUId) {
-          element.value.attributes.ReqElementUId = generateReqElementUid(
+          element.value.attributes.ReqElementUId = generateDefaultUid(
             element.name
           );
         }
@@ -288,17 +340,6 @@ export function useForm() {
         );
       }
     });
-  };
-
-  const generateReqElementUid = (elementName: string): string => {
-    const prefixMap: { [key: string]: string } = {
-      GraphElement: "Graph",
-      TableElement: "Table",
-      FormulaElement: "Formula",
-    };
-
-    const prefix = prefixMap[elementName] || "Element";
-    return `${prefix}${Math.floor(Math.random() * 1000)}`;
   };
 
   const handleAddEntity = async (elementPath: string, entity: any) => {

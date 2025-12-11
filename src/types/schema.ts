@@ -8,6 +8,7 @@ export interface XSDElement {
   minOccurs?: string;
   maxOccurs?: string;
   annotation?: XSDAnnotation;
+  skipInXml?: boolean;
   complexType?: XSDComplexType;
   simpleType?: XSDSimpleType;
   value?: any;

@@ -27,6 +27,7 @@ export function generateXMLWithValidation(schema: XSDSchema): string {
       for (const [_key, childElement] of Object.entries(
         rootElement.complexType.sequence
       )) {
+        if (childElement?.skipInXml) continue;
         if (childElement?.name && hasContent(childElement)) {
           processElementWithValidation(xml, childElement);
         }
@@ -40,7 +41,7 @@ export function generateXMLWithValidation(schema: XSDSchema): string {
 }
 
 function processElementWithValidation(parent: any, element: any): void {
-  if (!element || !element.name) return;
+  if (!element || !element.name || element.skipInXml) return;
 
   // Проверяем, есть ли содержание у элемента
   if (!hasContent(element)) {
@@ -80,6 +81,7 @@ function processElementWithValidation(parent: any, element: any): void {
     for (const [_childKey, child] of Object.entries(
       element.complexType.complexContent.extension.sequence
     )) {
+      if ((child as XSDElement)?.skipInXml) continue;
       if ((child as XSDElement)?.name && hasContent(child)) {
         hasChildContent = true;
         processElementWithValidation(currentNode, child);
@@ -91,6 +93,7 @@ function processElementWithValidation(parent: any, element: any): void {
     for (const [_childKey, child] of Object.entries(
       element.complexType.sequence
     )) {
+      if ((child as XSDElement)?.skipInXml) continue;
       if ((child as XSDElement)?.name && hasContent(child)) {
         hasChildContent = true;
         processElementWithValidation(currentNode, child);
@@ -100,6 +103,7 @@ function processElementWithValidation(parent: any, element: any): void {
 
   if (element.complexType?.all) {
     for (const [_childKey, child] of Object.entries(element.complexType.all)) {
+      if ((child as XSDElement)?.skipInXml) continue;
       if ((child as XSDElement)?.name && hasContent(child)) {
         hasChildContent = true;
         processElementWithValidation(currentNode, child);
@@ -292,6 +296,7 @@ function isComplexType(typeName?: string): boolean {
  */
 function hasContent(element: any): boolean {
   if (!element) return false;
+  if (element.skipInXml) return false;
   
   // Проверяем простое значение
   if (element.value !== undefined && 

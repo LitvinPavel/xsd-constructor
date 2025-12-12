@@ -2,7 +2,7 @@
 import { ref, reactive, nextTick, markRaw } from "vue";
 import { XSDParser } from "@/utils/xsdParser";
 import { generateXMLWithValidation } from "@/utils/xmlGenerator";
-import { deepCopyElement, getNestedValue, generateDefaultUid } from "@/utils/xsdUtils";
+import { deepCopyElement, getNestedValue, generateUid, isUidFieldName } from "@/utils/xsdUtils";
 import type { XSDSchema } from "@/types";
 
 export function useForm() {
@@ -256,7 +256,7 @@ export function useForm() {
 
     const nextSequence: Record<string, any> = {};
     values.forEach((val, idx) => {
-      const key = generateDefaultUid('PRule_');
+      const key = generateUid('PRule_');
       const prule = deepCopyElement(template);
 
       if (prule.complexType?.sequence?.PRuleData) {
@@ -388,20 +388,18 @@ export function useForm() {
         }
 
         if (!element.value.attributes.ReqElementUId) {
-          element.value.attributes.ReqElementUId = generateDefaultUid(
-            element.name
-          );
+          element.value.attributes.ReqElementUId = generateUid(element.name);
         }
 
         elementValues[currentPath] = element.value;
       } else {
-        if (
-          (element.name === "EntityUid" ||
-            element.name === "PropertyUid" ||
-            element.name === "RelationUid" ||
-            element.name === "ConditionUid") &&
-          (element.value === undefined || element.value === "")
-        ) {
+        const shouldAutofillUid =
+          isUidFieldName(element.name) &&
+          (element.value === undefined ||
+            element.value === "" ||
+            element.value === null);
+
+        if (shouldAutofillUid) {
           generateUniqueIds(element, element.name);
         }
 
@@ -584,30 +582,34 @@ export function useForm() {
   };
 
   const generateUniqueIds = (element: any, itemType: string) => {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
+    const shouldGenerateUid =
+      isUidFieldName(element.name) &&
+      (element.value === undefined ||
+        element.value === "" ||
+        element.value === null);
 
-    const generateId = (pattern: string): string => {
-      if (pattern.includes("Object([0-9])+")) {
-        return `Object${timestamp}${random}`;
-      } else if (pattern.includes("Relation([0-9]+)")) {
-        return `Relation${timestamp}${random}`;
-      } else if (pattern.includes("Property([0-9])+")) {
-        return `Property${timestamp}${random}`;
-      } else if (pattern.includes("Condition([0-9]+)")) {
-        return `Condition${timestamp}${random}`;
-      }
-      return `${itemType}${timestamp}${random}`;
-    };
+    if (shouldGenerateUid) {
+      element.value = generateUid(
+        element.name || itemType,
+        element.simpleType?.restriction?.pattern
+      );
+    }
 
-    if (
-      element.simpleType?.restriction?.pattern &&
-      (element.name === "EntityUid" ||
-        element.name === "RelationUid" ||
-        element.name === "PropertyUid" ||
-        element.name === "ConditionUid")
-    ) {
-      element.value = generateId(element.simpleType.restriction.pattern);
+    if (element.complexType?.attributes) {
+      Object.values(element.complexType.attributes).forEach((attr: any) => {
+        const shouldGenerateAttrUid =
+          isUidFieldName(attr.name) &&
+          (attr.value === undefined ||
+            attr.value === "" ||
+            attr.value === null);
+
+        if (shouldGenerateAttrUid) {
+          attr.value = generateUid(
+            attr.name || itemType,
+            attr.simpleType?.restriction?.pattern
+          );
+        }
+      });
     }
 
     if (element.complexType?.sequence) {

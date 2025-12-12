@@ -8,7 +8,7 @@
       v-if="type === 'number'"
       :id="fieldId"
       :value="value || null"
-      :disabled="disabled"
+      :disabled="disabled || isUidField"
       :placeholder="`Введите значение для поля ${name}`"
       @value-changed="onInput"
       class="flex-1"
@@ -38,7 +38,7 @@
       v-else
       :id="fieldId"
       :value="value"
-      :disabled="disabled"
+      :disabled="disabled || isUidField"
       :placeholder="`Введите значение для поля ${name}`"
       @value-changed="onInput"
       :auto-resize-enabled="true"
@@ -49,11 +49,12 @@
 </template>
 
 <script setup lang="ts">
-import { useId } from "vue";
+import { computed, useId } from "vue";
 import DxNumberBox, { type DxNumberBoxTypes } from "devextreme-vue/number-box";
 import DxDateBox, { type DxDateBoxTypes } from "devextreme-vue/date-box";
 import DxTextArea, { type DxTextAreaTypes } from "devextreme-vue/text-area";
 import DxCheckBox, { type DxCheckBoxTypes } from "devextreme-vue/check-box";
+import { isUidFieldName } from "@/utils/xsdUtils";
 
 interface Props {
   label?: string;
@@ -69,7 +70,7 @@ interface Emits {
   (e: "input", value: string | number | boolean): void;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   type: "text",
   fieldType: "input",
   disabled: false,
@@ -77,6 +78,7 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 const fieldId = useId();
+const isUidField = computed(() => isUidFieldName(props.name));
 
 function onInput(
   event:

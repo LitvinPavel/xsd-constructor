@@ -3,6 +3,12 @@ export const REMOVABLE_ITEMS = ['Entity', 'Property', 'Relation', 'LogicalUnit']
 export const KSI_IDENTIFICATION_FIELDS = ['EntityID', 'PropertyID'];
 export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations', 'LogicalUnits'];
 
+const UID_PREFIX_MAP: Record<string, string> = {
+  GraphElement: 'Graph',
+  TableElement: 'Table',
+  FormulaElement: 'Formula',
+};
+
 export function isComplexType(type?: string): boolean {
   return type ? COMPLEX_TYPES.includes(type) : false;
 }
@@ -11,8 +17,37 @@ export function canRemoveItem(itemName: string): boolean {
   return REMOVABLE_ITEMS.includes(itemName);
 }
 
+export function isUidFieldName(name?: string): boolean {
+  return typeof name === 'string' && /uid$/i.test(name);
+}
+
 export function isKSIIdentificationField(item: any): boolean {
   return KSI_IDENTIFICATION_FIELDS.includes(item.name);
+}
+
+export function generateUid(baseName?: string, pattern?: string): string {
+  const random = Math.floor(Math.random() * 1000);
+
+  const patternSource = pattern || baseName || '';
+
+  const getPrefix = () => {
+    if (patternSource.includes('Object([0-9])+')) return 'Object';
+    if (patternSource.includes('Relation([0-9]+)')) return 'Relation';
+    if (patternSource.includes('Property([0-9])+')) return 'Property';
+    if (patternSource.includes('Condition([0-9]+)')) return 'Condition';
+    return (
+      UID_PREFIX_MAP[baseName || ''] ||
+      UID_PREFIX_MAP[patternSource] ||
+      baseName ||
+      'Uid'
+    );
+  };
+
+  return `${getPrefix()}${random}`;
+}
+
+export function generateDefaultUid(baseName?: string, pattern?: string) {
+  return generateUid(baseName, pattern);
 }
 
 export function decodeHTMLEntities(text: string) {
@@ -40,17 +75,6 @@ export function getInputType(xsdType?: string): string {
   };
 
   return typeMap[xsdType] || 'text';
-}
-
-export function generateDefaultUid(elementName: string): string {
-  const prefixMap: { [key: string]: string } = {
-    'GraphElement': 'Graph',
-    'TableElement': 'Table',
-    'FormulaElement': 'Formula'
-  };
-  
-  const prefix = prefixMap[elementName] || elementName;
-  return `${prefix}${Math.floor(Math.random() * 1000)}`;
 }
 
 export function getReqElementType(elementName: string): string {

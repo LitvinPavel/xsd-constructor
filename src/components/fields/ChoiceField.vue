@@ -60,9 +60,7 @@ const options = computed(() =>
 );
 
 const selectedKey = ref(
-  props.element.complexType?.choice?.selectedKey ||
-    options.value[0]?.value ||
-    ""
+  props.element.complexType?.choice?.selectedKey || ""
 );
 
 const selectedElement = computed(() =>

@@ -17,6 +17,7 @@
       :value="element.value.attributes[key]"
       :label="field.annotation?.documentation || field.name"
       :name="field.name"
+      :disabled="isUidFieldName(field.name)"
       @input="onReqElementAttrChange('ReqElementUid', $event)"
     />
 
@@ -36,7 +37,7 @@
 <script setup lang="ts">
 import { inject } from "vue";
 import type { XSDSchema } from "@/types";
-import { getInputType, decodeHTMLEntities } from "@/utils/xsdUtils";
+import { getInputType, decodeHTMLEntities, isUidFieldName } from "@/utils/xsdUtils";
 import BaseFieldInput from "@/components/fields/BaseFieldInput.vue";
 
 interface Props {

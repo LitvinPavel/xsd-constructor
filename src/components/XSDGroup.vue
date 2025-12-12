@@ -146,6 +146,7 @@
               :label="attr.annotation.documentation"
               :type="getInputType(attr.type)"
               :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
+              :disabled="isUidFieldName(attr.name)"
               @input="($event) => (attr.value = $event)"
             />
           </div>
@@ -210,6 +211,7 @@
       :label="element.annotation?.documentation"
       :type="getInputType(element.type)"
       :pattern="element.pattern || element.simpleType?.restriction?.pattern"
+      :disabled="isUidFieldName(element.name)"
       @input="handleInputChange"
     />
   </div>
@@ -226,6 +228,7 @@ import {
   isKSIIdentificationField,
   getInputType,
   isReqElementExtension as isReqElementExtensionUtil,
+  isUidFieldName,
 } from "@/utils/xsdUtils";
 import ReqElementExtensionField from "./fields/ReqElementExtensionField.vue";
 import BaseFieldSelect from "./fields/BaseFieldSelect.vue";

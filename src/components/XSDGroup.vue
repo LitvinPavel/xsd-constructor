@@ -137,6 +137,7 @@
               :label="attr.annotation.documentation"
               option-key="value"
               label-key="value"
+              :disabled="isUidFieldName(attr.name) || isPRuleFieldDisabled(attr, currentPath, attr.name)"
             />
             <BaseFieldInput
               v-else-if="attr.type"
@@ -146,7 +147,7 @@
               :label="attr.annotation.documentation"
               :type="getInputType(attr.type)"
               :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
-              :disabled="isUidFieldName(attr.name)"
+              :disabled="isUidFieldName(attr.name) || isPRuleFieldDisabled(attr, currentPath, attr.name)"
               @input="($event) => (attr.value = $event)"
             />
           </div>
@@ -201,6 +202,7 @@
       :label="element.annotation.documentation"
       option-key="value"
       label-key="value"
+      :disabled="isPRuleFieldDisabled(element, currentPath)"
       @update:modelValue="handleInputChange"
     />
     <BaseFieldInput
@@ -211,7 +213,7 @@
       :label="element.annotation?.documentation"
       :type="getInputType(element.type)"
       :pattern="element.pattern || element.simpleType?.restriction?.pattern"
-      :disabled="isUidFieldName(element.name)"
+      :disabled="isUidFieldName(element.name) || isPRuleFieldDisabled(element, currentPath)"
       @input="handleInputChange"
     />
   </div>
@@ -291,6 +293,25 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     props.element.name
   );
 });
+
+const isPRuleContext = (path: string) => {
+  const segments = path.split(".");
+  return (
+    path.includes("PLOGIC") &&
+    path.includes("PRules") &&
+    segments.some((segment) => /^PRule/.test(segment))
+  );
+};
+
+const isPRuleFieldDisabled = (
+  target: any,
+  path: string,
+  nameOverride?: string
+) => {
+  if (!isPRuleContext(path)) return false;
+  const fieldName = nameOverride || target?.name;
+  return fieldName !== "PRuleNotes";
+};
 
 const onComplexTypeSelected = () => {
   const instance = availableMockInstances.value.find(

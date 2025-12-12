@@ -7,12 +7,13 @@
       <div class="flex gap-2 items-start flex-1">
         <DxSelectBox
         :id="fieldId"
-        :value="modelValue"
+        :value="modelValue || value"
         :items="options"
         :display-expr="getDisplayExpr"
         :value-expr="optionKey"
         :disabled="disabled"
         :show-clear-button="true"
+        :search-enabled="true"
         :required="isСannotEnpty"
         :placeholder="`Выберите значение для поля ${name}`"
         @value-changed="onValueChanged"
@@ -37,6 +38,7 @@ interface Props {
   name: string;
   label?: string;
   modelValue?: string;
+  value?: string;
   options: IOption[];
   optionKey: keyof IOption;
   labelKey: keyof IOption;
@@ -74,5 +76,4 @@ const getDisplayExpr = computed(() => {
 function onValueChanged(event: { value: string }) {
   emit("update:modelValue", event.value);
 }
-
 </script>

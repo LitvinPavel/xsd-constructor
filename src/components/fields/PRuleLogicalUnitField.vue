@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref, useId, watch } from "vue";
+import { computed, inject, ref, useId, watch } from "vue";
 import type { ValueChangedEvent } from 'devextreme/ui/check_box';
 import type { XSDSchema, XSDElement } from "@/types";
 import BaseFieldInput from "@/components/fields/BaseFieldInput.vue";
@@ -40,6 +40,14 @@ const schema: Partial<XSDSchema> = inject("schema", {});
 
 const fieldId = useId();
 const isManualInput = ref<boolean>(false);
+const logicalUnitId = computed(
+  () => props.path.match(/LogicalUnit_\d+/)?.[0] || ""
+);
+
+const syncManualFlagFromSchema = () => {
+  if (!logicalUnitId.value) return;
+  isManualInput.value = !!schema.pRuleManualInputs?.[logicalUnitId.value];
+};
 
 const onChange = (e: string | number | boolean): void => {
   emit("update-value", e);
@@ -47,6 +55,13 @@ const onChange = (e: string | number | boolean): void => {
 
 const onToggleInputMode = (e: ValueChangedEvent) => {
   isManualInput.value = e.value;
+  if (logicalUnitId.value) {
+    schema.pRuleManualInputs = {
+      ...(schema.pRuleManualInputs || {}),
+      [logicalUnitId.value]: isManualInput.value,
+    };
+  }
+
   if (!isManualInput.value) {
     calculateValue();
   }
@@ -88,5 +103,11 @@ const calculateValue = (): void => {
 watch(
   () => schema.pRuleLogicalUnits,
   () => calculateValue()
+);
+
+watch(logicalUnitId, syncManualFlagFromSchema, { immediate: true });
+watch(
+  () => schema.pRuleManualInputs,
+  () => syncManualFlagFromSchema()
 );
 </script>

@@ -14,6 +14,7 @@ export function useForm() {
     propertyStructur: {},
     relationStructur: {},
     pRuleLogicalUnits: {},
+    pRuleManualInputs: {},
   });
 
   const generatedXML = ref<string>("");
@@ -62,6 +63,8 @@ export function useForm() {
       Object.keys(schema.simpleTypes).forEach(
         (key) => delete schema.simpleTypes[key]
       );
+      schema.pRuleLogicalUnits = {};
+      schema.pRuleManualInputs = {};
       Object.keys(elementValues).forEach((key) => delete elementValues[key]);
       elementPathMap.clear();
 
@@ -240,7 +243,7 @@ export function useForm() {
     const prulesSequence = getPRulesSequence();
     if (!prulesSequence || typeof prulesSequence !== "object") return;
 
-    const values = Object.entries(elementValues)
+    const entries = Object.entries(elementValues)
       .filter(
         ([path, val]) =>
           path.endsWith("PRuleLogicalUnit") &&
@@ -248,25 +251,41 @@ export function useForm() {
           val !== null &&
           val !== ""
       )
-      .map(([, val]) => String(val));
+      .map(([path, val]) => ({
+        path,
+        value: String(val),
+        logicalUnitId: path.match(/LogicalUnit_\d+/)?.[0],
+      }));
 
     const template =
       prulesSequence.PRule || Object.values(prulesSequence || {})[0];
     if (!template) return;
 
     const nextSequence: Record<string, any> = {};
-    values.forEach((val, idx) => {
+    entries.forEach((entry, idx) => {
       const key = generateUid('PRule_');
       const prule = deepCopyElement(template);
 
       if (prule.complexType?.sequence?.PRuleData) {
-        prule.complexType.sequence.PRuleData.value = val;
+        prule.complexType.sequence.PRuleData.value = entry.value;
       } else {
-        prule.value = val;
+        prule.value = entry.value;
       }
 
       if (prule.complexType?.attributes?.PRuleID) {
         prule.complexType.attributes.PRuleID.value = idx + 1;
+      }
+
+      if (prule.complexType?.sequence?.PRuleType) {
+        
+        const isManual = entry.logicalUnitId
+          ? !!schema.pRuleManualInputs?.[entry.logicalUnitId]
+          : false;
+        prule.complexType.sequence.PRuleType.value = isManual
+          ? "ручной"
+          : "автоматический";
+
+          console.log(entry, prule)
       }
 
       nextSequence[key] = prule;

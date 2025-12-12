@@ -74,6 +74,7 @@ export interface XSDSchema {
   relationStructur: Partial<XSDElement>;
   logicalUnitStructur?: Partial<XSDElement>;
   pRuleLogicalUnits?: { [key: string]: PRuleLogicalUnit };
+  pRuleManualInputs?: { [key: string]: boolean };
 }
 
 export interface ComplexTypeInstance {

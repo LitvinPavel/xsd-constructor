@@ -1,0 +1,266 @@
+{
+  "mockData": {
+    "KSIIdentification": [
+      {
+        "id": "ksi_1",
+        "name": "Идентификация КСИ 1",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация оборудования по классификатору"
+        },
+        "data": {
+          "KSITableCode": "RZo",
+          "KSICodeOfClass": "12345",
+          "KSINameOfClass": "Класс оборудования 1",
+          "KSICodeOfType": "001",
+          "KSITypeOfClass": "Тип класса 1",
+          "KSIUIN": "UIN123456789",
+          "KSIVersion": "2025-01-01"
+        }
+      },
+      {
+        "id": "ksi_2",
+        "name": "Идентификация КСИ 2",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация материалов по классификатору"
+        },
+        "data": {
+          "KSITableCode": "CCo",
+          "KSICodeOfClass": "67890",
+          "KSINameOfClass": "Класс материалов",
+          "KSICodeOfType": "002",
+          "KSITypeOfClass": "Тип класса 2",
+          "KSIUIN": "UIN987654321",
+          "KSIVersion": "2024-12-15"
+        }
+      },
+      {
+        "id": "ksi_3",
+        "name": "Многоквартирный жилой дом высотой до 75 м",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "CEn",
+          "KSICodeOfClass": "GCAC",
+          "KSINameOfClass": "Многоквартирный жилой дом",
+          "KSIUIN": "KSI030000585",
+          "KSIVersion": "2024-04-01"
+        }
+      },
+      {
+        "id": "ksi_4",
+        "name": "дверной проем",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Com",
+          "KSICodeOfClass": "XTB",
+          "KSINameOfClass": "проем",
+          "KSICodeOfType": "XTB010",
+          "KSITypeOfClass": "дверной проем",
+          "KSIUIN": "KSI060000839",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_5",
+        "name": "Высота дверного проема",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Prp",
+          "KSICodeOfClass": "CPG_0007",
+          "KSINameOfClass": "Высота дверного проема",
+          "KSIUIN": "KSI210000940",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_6",
+        "name": "Этаж подвальный",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "RZo",
+          "KSICodeOfClass": "SAC",
+          "KSINameOfClass": "Этаж подвальный",
+          "KSIUIN": "KSI010001033",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_7",
+        "name": "Высота пожарно-техническая",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Prp",
+          "KSICodeOfClass": "BPG_0013",
+          "KSINameOfClass": "Высота пожарно-техническая",
+          "KSIUIN": "KSI210000517",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_8",
+        "name": "Технический этаж",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "RZo",
+          "KSICodeOfClass": "EBA",
+          "KSINameOfClass": "Горизонтальное пространство для обслуживания с доступом людей",
+          "KSICodeOfType": "EBA010",
+          "KSITypeOfClass": "Пространство технического этажа",
+          "KSIUIN": "KSI010000777",
+          "KSIVersion": "2025-10-07"
+        }
+      }
+    ],
+    "Organization": [
+      {
+        "id": "org_1",
+        "name": "Организация А",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация разработчик А"
+        },
+        "data": {
+          "ShortName": "ОргА",
+          "FullName": "Полное наименование Организации А"
+        }
+      },
+      {
+        "id": "org_2",
+        "name": "Организация Б",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация разработчик Б"
+        },
+        "data": {
+          "ShortName": "ОргБ",
+          "FullName": "Полное наименование Организации Б с дополнительной информацией"
+        }
+      },
+      {
+        "id": "org_3",
+        "name": "Техническим комитетом по стандартизации ТК 465 \"Строительство",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация"
+        },
+        "data": {
+          "FullName": "Техническим комитетом по стандартизации ТК 465 \"Строительство"
+        }
+      },
+      {
+        "id": "org_4",
+        "name": "Департаментом градостроительной деятельности и архитектуры Министерства строительства и жилищно-коммунального хозяйства Российской Федерации (Минстрой России)",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация"
+        },
+        "data": {
+          "FullName": "Департаментом градостроительной деятельности и архитектуры Министерства строительства и жилищно-коммунального хозяйства Российской Федерации (Минстрой России)"
+        }
+      },
+      {
+        "id": "org_5",
+        "name": "АО \"ЦНИИПромзданий\"",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация"
+        },
+        "data": {
+          "ShortName": "АО \"ЦНИИПромзданий\""
+        }
+      },
+      {
+        "id": "org_6",
+        "name": "Федеральным агентством по техническому регулированию и метрологии (Росстандарт)",
+        "type": "Organization",
+        "annotation": {
+          "documentation": "Организация"
+        },
+        "data": {
+          "FullName": "Федеральным агентством по техническому регулированию и метрологии (Росстандарт)"
+        }
+      }
+    ],
+    "Link": [
+      {
+        "id": "link_1",
+        "name": "Внешняя ссылка",
+        "type": "Link",
+        "annotation": {
+          "documentation": "Внешняя ссылка на документ"
+        },
+        "data": {
+          "attributes": {
+            "IdLink": "Link123",
+            "LinkType": "внешняя"
+          },
+          "NameOfSourceDocument": "Федеральный закон от 25 июня 2002 г. № 73-ФЗ «Об\nобъектах культурного наследия (памятниках истории и\nкультуры) народов Российской Федерации»"
+        }
+      },
+      {
+        "id": "link_2",
+        "name": "Внутренняя ссылка",
+        "type": "Link",
+        "annotation": {
+          "documentation": "Внутренняя ссылка на документ"
+        },
+        "data": {
+          "attributes": {
+            "IdLink": "Link456",
+            "LinkType": "внутренняя"
+          },
+          "NameOfSourceDocument": "Градостроительство. Планировка и застройка городских и сельских поселений"
+        }
+      },
+      {
+        "id": "link_3",
+        "name": "Внутренняя ссылка",
+        "type": "Link",
+        "annotation": {
+          "documentation": "Внутренняя ссылка на документ"
+        },
+        "data": {
+          "attributes": {
+            "IdLink": "Link456",
+            "LinkType": "внутренняя"
+          },
+          "NameOfSourceDocument": "Системы противопожарной защиты. Эвакуационные пути и выходы (с изменениями № 1, № 2, № 3)"
+        }
+      },
+      {
+        "id": "link_4",
+        "name": "Внутренняя ссылка",
+        "type": "Link",
+        "annotation": {
+          "documentation": "Внутренняя ссылка на требование"
+        },
+        "data": {
+          "attributes": {
+            "IdLink": "Link457",
+            "LinkType": "внутренняя"
+          },
+          "LinkReqUid": "193159"
+        }
+      }
+    ]
+  }
+}

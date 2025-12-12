@@ -158,10 +158,10 @@
       :key="`${currentPath}-${element.name}`"
       v-model="selectedComplexTypeId"
       :name="element.name"
-      :label="element.annotation.documentation"
+      :label="element.name"
       :options="availableMockInstances"
       option-key="id"
-      label-key="annotation.documentation"
+      label-key="name"
       @update:modelValue="onComplexTypeSelected"
     >
       <div

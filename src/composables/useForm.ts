@@ -149,7 +149,7 @@ export function useForm() {
     logicalUnit.complexType.sequence.PRuleLogicalUnit = {
       name: "PRuleLogicalUnit",
       annotation: {
-        documentation: "Авто правило логической единицы (не сохраняется в XML)",
+        documentation: "Программное правило логической единицы",
       },
       type: "xs:string",
       value: "",

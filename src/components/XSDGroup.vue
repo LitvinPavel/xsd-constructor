@@ -11,6 +11,7 @@
     ]"
     :style="level > 0 ? { marginLeft: `${level * 4}px` } : undefined"
   >
+  {{ element.name }}
     <div v-if="!element.type && element.complexType?.sequence" class="w-full">
       <div
         v-if="element.annotation?.documentation"
@@ -84,6 +85,7 @@
               @add-property="handleChildAddProperty"
               @add-relation="handleChildAddRelation"
               @add-logical-unit="emit('add-logical-unit', $event)"
+              @add-dynamic-item="handleChildAddDynamic"
             />
           </div>
         </template>
@@ -113,6 +115,7 @@
               @add-property="handleChildAddProperty"
               @add-relation="handleChildAddRelation"
               @add-logical-unit="emit('add-logical-unit', $event)"
+              @add-dynamic-item="handleChildAddDynamic"
             />
           </div>
         </template>
@@ -253,6 +256,7 @@ interface Emits {
   (e: "add-property", path: string): void;
   (e: "add-relation", path: string): void;
   (e: "add-logical-unit", path: string): void;
+  (e: "add-dynamic-item", path: string): void;
 }
 
 const props = defineProps<Props>();
@@ -289,9 +293,24 @@ const availableMockInstances = computed(() => {
 });
 
 const isEntitiesOrPropertiesOrRelations = computed(() => {
-  return ["Entities", "Properties", "Relations", "LogicalUnits"].includes(
-    props.element.name
-  );
+  const dynamicAddables = [
+    "Entities",
+    "Properties",
+    "Relations",
+    "LogicalUnits",
+    "KeyWords",
+    "AuthorizedBy",
+    "ObjectsOfStandartization",
+    "SecurityAspects",
+    "ObjectsOfReq",
+    "ReqLinks",
+    "NeedDataLinks",
+    "GraphView",
+    "TableView",
+    "FormulasView"
+  ];
+  console.log(props.element.name)
+  return dynamicAddables.includes(props.element.name);
 });
 
 const isPRuleContext = (path: string) => {
@@ -354,6 +373,8 @@ function handleAddElement(name: string) {
     handleAddRelation();
   } else if (name === "LogicalUnits") {
     handleAddLogicalUnit();
+  } else {
+    handleAddDynamic();
   }
 }
 
@@ -377,6 +398,11 @@ const handleAddRelation = async () => {
   emit("add-relation", currentPath.value);
 };
 
+const handleAddDynamic = async () => {
+  await nextTick();
+  emit("add-dynamic-item", currentPath.value);
+};
+
 const handleChildAddEntity = (path: string) => {
   emit("add-entity", path);
 };
@@ -387,6 +413,10 @@ const handleChildAddProperty = (path: string) => {
 
 const handleChildAddRelation = (path: string) => {
   emit("add-relation", path);
+};
+
+const handleChildAddDynamic = (path: string) => {
+  emit("add-dynamic-item", path);
 };
 
 const removeItem = (key: string) => {

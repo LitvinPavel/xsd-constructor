@@ -1,5 +1,20 @@
 export const COMPLEX_TYPES = ['KSIIdentification', 'Condition', 'Organization', 'Link'];
-export const REMOVABLE_ITEMS = ['Entity', 'Property', 'Relation', 'LogicalUnit'];
+export const REMOVABLE_ITEMS = [
+  'Entity',
+  'Property',
+  'Relation',
+  'LogicalUnit',
+  'KeyWord',
+  'Developer',
+  'ObjectOfStandartization',
+  'SecurityAspect',
+  'ObjectOfReq',
+  'ReqLink',
+  'NeedDataLink',
+  'GraphElement',
+  'TableElement',
+  'FormulaElement',
+];
 export const KSI_IDENTIFICATION_FIELDS = ['EntityID', 'PropertyID'];
 export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations', 'LogicalUnits'];
 

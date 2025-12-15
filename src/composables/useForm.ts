@@ -22,6 +22,7 @@ export function useForm() {
   const elementPathMap = new Map<string, any>();
   const errorMessage = ref<string | null>(null);
   const pruleTemplate = ref<any | null>(null);
+  const dynamicTemplates: Record<string, any> = reactive({});
 
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -106,16 +107,30 @@ export function useForm() {
   };
 
   const removeDefaultDMODELElements = () => {
+    const dynamicKeys = [
+      "Entity",
+      "Property",
+      "Relation",
+      "LogicalUnit",
+      "KeyWord",
+      "Developer",
+      "ObjectOfStandartization",
+      "SecurityAspect",
+      "ObjectOfReq",
+      "ReqLink",
+      "NeedDataLink",
+      "GraphElement",
+      "TableElement",
+      "FormulaElement",
+    ];
     const removeFromSequence = (sequence: any) => {
       if (!sequence) return;
 
       Object.keys(sequence).forEach((key) => {
-        if (
-          key === "Entity" ||
-          key === "Property" ||
-          key === "Relation" ||
-          key === "LogicalUnit"
-        ) {
+        if (dynamicKeys.includes(key)) {
+          if (!dynamicTemplates[key]) {
+            dynamicTemplates[key] = deepCopyElement(sequence[key]);
+          }
           delete sequence[key];
         }
       });
@@ -597,6 +612,73 @@ export function useForm() {
     }
   };
 
+  const handleAddDynamicItem = async (elementPath: string) => {
+    await nextTick();
+    const targetElement = elementPathMap.get(elementPath);
+    if (!targetElement) return;
+
+    const containerToTemplateMap: Record<string, string> = {
+      KeyWords: "KeyWord",
+      Developers: "Developer",
+      AuthorizedBy: "Developer",
+      ObjectsOfStandartization: "ObjectOfStandartization",
+      SecurityAspects: "SecurityAspect",
+      ObjectsOfReq: "ObjectOfReq",
+      ReqLinks: "ReqLink",
+      NeedDataLinks: "NeedDataLink",
+      GraphView: "GraphElement",
+      TableView: "TableElement",
+      FormulasView: "FormulaElement",
+    };
+
+    const sequence = targetElement.complexType?.sequence;
+    let template: any = null;
+    let templateName = "";
+
+    const desiredKey =
+      containerToTemplateMap[targetElement.name] ||
+      containerToTemplateMap[
+        typeof targetElement.name === "string"
+          ? targetElement.name.replace(/s$/, "")
+          : ""
+      ];
+
+    if (desiredKey && dynamicTemplates[desiredKey]) {
+      template = deepCopyElement(dynamicTemplates[desiredKey]);
+      templateName = template?.name || desiredKey;
+    } else if (dynamicTemplates[targetElement.name]) {
+      template = deepCopyElement(dynamicTemplates[targetElement.name]);
+      templateName = template?.name || targetElement.name;
+    } else if (sequence && Object.keys(sequence).length) {
+      const firstKey = Object.keys(sequence)[0];
+      template = deepCopyElement(sequence[firstKey as string]);
+      templateName = template?.name || firstKey;
+    }
+
+    if (!template || !templateName) return;
+
+    const newKey = `${templateName}_${Date.now()}`;
+    const newItem = reactive(template);
+
+    if ("value" in newItem) {
+      newItem.value = "";
+    }
+
+    if (!targetElement.complexType) {
+      targetElement.complexType = {};
+    }
+    if (!targetElement.complexType.sequence) {
+      targetElement.complexType.sequence = {};
+    }
+
+    targetElement.complexType.sequence = reactive({
+      ...targetElement.complexType.sequence,
+      [newKey]: newItem,
+    });
+
+    initializeElementValues({ [newKey]: newItem }, elementPath);
+  };
+
   const handleAddLogicalUnit = async (elementPath: string) => {
     await nextTick();
     const targetElement = elementPathMap.get(elementPath);
@@ -710,5 +792,6 @@ export function useForm() {
     handleAddProperty,
     handleAddRelation,
     handleAddLogicalUnit,
+    handleAddDynamicItem,
   };
 }

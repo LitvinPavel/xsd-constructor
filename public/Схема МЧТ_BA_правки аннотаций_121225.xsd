@@ -9,6 +9,7 @@
 		</xs:annotation>
 		<xs:all>
 			<xs:element name="KSITableCode">
+				<!-- KsiTable.Code — значение для текущей записи, обязательное поле -->
 				<xs:annotation>
 					<xs:documentation>Код классификационной таблицы</xs:documentation>
 				</xs:annotation>
@@ -39,31 +40,37 @@
 				</xs:simpleType>
 			</xs:element>
 			<xs:element name="KSICodeOfClass" type="xs:string">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то берем значение KsiItem.Code для текущей записи; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.ParentCode для текущей записи, обязательное поле -->
 				<xs:annotation>
-					<xs:documentation>Код класса по соответствующей КТ</xs:documentation>
+					<xs:documentation>Код класса</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="KSINameOfClass" type="xs:string">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то берем значение KsiItem.Title для текущей записи; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Title для родительской записи (связанной через ParentID), обязательное поле -->
 				<xs:annotation>
 					<xs:documentation>Наименование класса</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="KSICodeOfType" type="xs:string" minOccurs="0">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то не заполняем; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Code для текущей записи -->
 				<xs:annotation>
-					<xs:documentation>Код типа класса по соответствующей КТ</xs:documentation>
+					<xs:documentation>Код элемента</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="KSITypeOfClass" type="xs:string" minOccurs="0">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то не заполняем; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Title для текущей записи -->
 				<xs:annotation>
-					<xs:documentation>Наименование типа класса</xs:documentation>
+					<xs:documentation>Наименование элемента</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="KSIUIN" type="xs:string">
+				<!-- KsiItem.KSIUIN — значение из текущей записи, обязательное поле -->
 				<xs:annotation>
-					<xs:documentation>УИН по КСИ</xs:documentation>
+					<xs:documentation>УИН</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="KSIVersion" type="xs:date">
+				<!-- KsiVersion.PublishDate — значение для текущей записи, обязательное поле -->
 				<xs:annotation>
 					<xs:documentation>Версия КСИ</xs:documentation>
 				</xs:annotation>
@@ -73,7 +80,7 @@
 	<!-- ComplexType: Organisation -->
 	<xs:complexType name="Organization">
 		<xs:annotation>
-			<xs:documentation>Кем разработан</xs:documentation>
+			<xs:documentation>Организация</xs:documentation>
 		</xs:annotation>
 		<xs:all>
 			<xs:element name="ShortName" type="xs:string" minOccurs="0">
@@ -95,18 +102,21 @@
 		</xs:annotation>
 		<xs:sequence>
 			<xs:element name="NameOfSourceDocument" type="xs:string" minOccurs="0">
+				<!-- поиск по NtdDocument.Title или ввод вручную -->
 				<xs:annotation>
-					<xs:documentation>Наименование ссылочного документа</xs:documentation>
+					<xs:documentation>Наименование документа, на который ссылается содержание требования</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="LinkReqUid" type="xs:string" minOccurs="0">
+				<!-- NtdRequirements.UIN, на основании связи содержания нормативного требования с другими нормативными требованиями NtdRequirementsNtdRequirementsM2M или вручную вводим порядковый номер, если ссылка внешняя -->
 				<xs:annotation>
-					<xs:documentation>Id требования в составе источника</xs:documentation>
+					<xs:documentation>UIN или порядковый номер требования, на которое ссылается содержание требования</xs:documentation>
 				</xs:annotation>
 			</xs:element>
+			<!-- Пишем вручную вид и номер. Даже для внутренних требований и их элементов, для них достаточно связи с требованием. Связи требования с элементами других требований в бд нет. -->
 			<xs:element name="LinkReqElementUid" type="xs:string" minOccurs="0">
 				<xs:annotation>
-					<xs:documentation>Id структурного элемента в составе требования</xs:documentation>
+					<xs:documentation>Вид и номер структурного элемента, на который ссылается содержание требования</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 		</xs:sequence>
@@ -139,16 +149,19 @@
 		</xs:annotation>
 		<xs:sequence>
 			<xs:element name="ReqElementData" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.Content -->
 				<xs:annotation>
 					<xs:documentation>Содержимое элемента</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="ReqElementNumber" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.ID -->
 				<xs:annotation>
 					<xs:documentation>Номер структурного элемента в составе источника требования</xs:documentation>
 				</xs:annotation>
 			</xs:element>
 			<xs:element name="ReqElementName" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.Name -->
 				<xs:annotation>
 					<xs:documentation>Наименование элемента</xs:documentation>
 				</xs:annotation>
@@ -165,6 +178,7 @@
 			</xs:element>
 		</xs:sequence>
 		<xs:attribute name="ReqElementType" use="required">
+			<!-- NtdElementAdditional.Type -->
 			<xs:annotation>
 				<xs:documentation>Тип структурного элемента требования</xs:documentation>
 			</xs:annotation>
@@ -172,7 +186,7 @@
 				<xs:restriction base="xs:string">
 					<xs:enumeration value="графическое изображение"/>
 					<xs:enumeration value="таблица"/>
-					<xs:enumeration value="формульная запись"/>
+					<xs:enumeration value="формула"/>
 				</xs:restriction>
 			</xs:simpleType>
 		</xs:attribute>
@@ -208,6 +222,7 @@
 									<xs:union memberTypes="xs:integer xs:decimal"/>
 								</xs:simpleType>
 							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
 							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Единицы измерения</xs:documentation>
@@ -215,6 +230,7 @@
 							</xs:element>
 						</xs:sequence>
 						<xs:attribute name="TypeOfCondition" use="required">
+							<!-- NtdCondition.Title -->
 							<xs:annotation>
 								<xs:documentation>Тип условия</xs:documentation>
 							</xs:annotation>
@@ -241,6 +257,7 @@
 									<xs:union memberTypes="xs:integer xs:decimal"/>
 								</xs:simpleType>
 							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
 							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Единицы измерения</xs:documentation>
@@ -248,6 +265,7 @@
 							</xs:element>
 						</xs:sequence>
 						<xs:attribute name="TypeOfCondition" use="required">
+							<!-- NtdCondition.Title -->
 							<xs:annotation>
 								<xs:documentation>Тип условия</xs:documentation>
 							</xs:annotation>
@@ -287,6 +305,7 @@
 									<xs:documentation>Выражение для вычисления</xs:documentation>
 								</xs:annotation>
 							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
 							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
 								<xs:annotation>
 									<xs:documentation>Единицы измерения</xs:documentation>
@@ -312,7 +331,7 @@
 	<!-- RootElement: REQUIREMENT -->
 	<xs:element name="Requirement">
 		<xs:annotation>
-			<xs:documentation>Нормативное требование</xs:documentation>
+			<xs:documentation>Требование</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>
 			<xs:sequence>
@@ -325,18 +344,20 @@
 						<xs:sequence>
 							<xs:element name="DocMetadata">
 								<xs:annotation>
-									<xs:documentation>Метаданные контекста требования</xs:documentation>
+									<xs:documentation>Метаданные источника требования</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
 										<xs:element name="DocNumber" type="xs:string">
+											<!-- NtdDocument.Number -->
 											<xs:annotation>
-												<xs:documentation>Номер документа</xs:documentation>
+												<xs:documentation>Номер документа (NtdDocument.Number)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="DocUId" type="xs:integer">
+											<!-- NtdDocument.DocID -->
 											<xs:annotation>
-												<xs:documentation>Уникальный ID документа</xs:documentation>
+												<xs:documentation>ID документа (NtdDocument.DocID)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="DocName">
@@ -346,55 +367,63 @@
 											<xs:complexType>
 												<xs:sequence>
 													<xs:element name="DocRusName" type="xs:string">
+														<!-- NtdDocument.Title -->
 														<xs:annotation>
-															<xs:documentation>Наименование документа на русском языке</xs:documentation>
+															<xs:documentation>Наименование документа на русском языке (NtdDocument.Title)</xs:documentation>
 														</xs:annotation>
 													</xs:element>
+													<!-- NtdDocument.Translation -->
 													<xs:element name="DocEngName" type="xs:string" minOccurs="0">
 														<xs:annotation>
-															<xs:documentation>Наименование документа на английском языке</xs:documentation>
+															<xs:documentation>Наименование документа на английском языке (NtdDocument.Translation)</xs:documentation>
 														</xs:annotation>
 													</xs:element>
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
 										<xs:element name="CodeISO" type="xs:string" minOccurs="0">
+											<!-- NtdDocument.ISOCodes -->
 											<xs:annotation>
-												<xs:documentation>Код документа по ISO (в случае наличия)</xs:documentation>
+												<xs:documentation>Код ISO (NtdDocument.ISOCodes)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="ProvidedBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Customer - в FullName -->
 											<xs:annotation>
-												<xs:documentation>Кем внесен для рассмотрения</xs:documentation>
+												<xs:documentation>Внесен (NtdDocument.Customer)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="ApprovedBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Publisher - в FullName -->
 											<xs:annotation>
-												<xs:documentation>Кем подготовлен для утверждения</xs:documentation>
+												<xs:documentation>Подготовлен к утверждению (Publisher)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="AuthorizedBy" minOccurs="0">
 											<xs:annotation>
-												<xs:documentation>Кем разработан</xs:documentation>
+												<xs:documentation>Исполнители</xs:documentation>
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
 													<xs:element name="Developer" type="Organization" maxOccurs="unbounded">
+														<!-- NtdAuthor.Title - в ShortName -->
 														<xs:annotation>
-															<xs:documentation>Разработчик</xs:documentation>
+															<xs:documentation>Исполнитель (NtdAuthor.Title)</xs:documentation>
 														</xs:annotation>
 													</xs:element>
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
 										<xs:element name="RegisteredBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Initiator - в FullName -->
 											<xs:annotation>
-												<xs:documentation>Кем зарегистрирован</xs:documentation>
+												<xs:documentation>Зарегистрирован (NtdDocument.Initiator)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="EffectiveDate" type="xs:date" minOccurs="0">
+											<!-- NtdDocument.EffectiveDate -->
 											<xs:annotation>
-												<xs:documentation>Дата введения в действие</xs:documentation>
+												<xs:documentation>Дата ввода в действие документа (NtdDocument.EffectiveDate)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="KeyWords" minOccurs="0">
@@ -403,13 +432,15 @@
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
+													<!-- NtdDocumentKeyword.Title если создадим такое поле -->
 													<xs:element name="KeyWord" type="xs:string" maxOccurs="unbounded"/>
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
 										<xs:element name="AreaOfApplication" type="xs:string" minOccurs="0">
+											<!-- NtdDocument.Scope -->
 											<xs:annotation>
-												<xs:documentation>Область применения</xs:documentation>
+												<xs:documentation>Область применения (NtdDocument.Scope)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="ObjectsOfStandartization">
@@ -431,7 +462,7 @@
 																</xs:element>
 																<xs:element name="ObjectID" type="KSIIdentification" minOccurs="0" maxOccurs="unbounded">
 																	<xs:annotation>
-																		<xs:documentation>ID объекта</xs:documentation>
+																		<xs:documentation>Класс/элемент КСИ</xs:documentation>
 																	</xs:annotation>
 																</xs:element>
 															</xs:sequence>
@@ -440,16 +471,17 @@
 												</xs:sequence>
 											</xs:complexType>
 										</xs:element>
-										<!-- BA: SecurityAspect для документа может принимать множественные значения, поэтому вместо атрибута добавлен набор элементов -->
+										<!-- BA: Документ может иметь несколько аспектов безопасности, поэтому вместо атрибута добавлен набор элементов -->
 										<xs:element name="SecurityAspects" minOccurs="0">
 											<xs:annotation>
-												<xs:documentation>Аспекты безопасности  (согласно 384-ФЗ)</xs:documentation>
+												<xs:documentation>Аспекты безопасности (согласно 384-ФЗ)</xs:documentation>
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
 													<xs:element name="SecurityAspect"  maxOccurs="unbounded">
+														<!-- NtdSecurityAspect.Title  -->
 														<xs:annotation>
-															<xs:documentation>Аспект безопасности  (согласно 384-ФЗ)</xs:documentation>
+															<xs:documentation>Аспект безопасности (NtdSecurityAspect.Title)</xs:documentation>
 														</xs:annotation>
 														<xs:simpleType>
 															<xs:restriction base="xs:string" >
@@ -469,8 +501,9 @@
 										</xs:element>
 									</xs:sequence>
 									<xs:attribute name="DocType" use="required">
+										<!-- NtdDocumentKind.Title -->
 										<xs:annotation>
-											<xs:documentation>Тип документа</xs:documentation>
+											<xs:documentation>Вид документа (NtdDocumentKind.Title)</xs:documentation>
 										</xs:annotation>
 										<xs:simpleType>
 											<xs:restriction base="xs:string">
@@ -490,8 +523,9 @@
 										</xs:simpleType>
 									</xs:attribute>
 									<xs:attribute name="DocCategory" use="required">
+										<!-- NtdKindGroup.Title -->
 										<xs:annotation>
-											<xs:documentation>Категория документов: НТД/НПА</xs:documentation>
+											<xs:documentation>Группа документа (NtdKindGroup.Title)</xs:documentation>
 										</xs:annotation>
 										<xs:simpleType>
 											<xs:restriction base="xs:string">
@@ -500,31 +534,15 @@
 											</xs:restriction>
 										</xs:simpleType>
 									</xs:attribute>
-									<!-- BA: SecurityAspect для документа может принимать множественные значения, поэтому вместо атрибута добавлен набор элементов
-									<xs:attribute name="SecurityAspect" >
-										<xs:annotation>
-											<xs:documentation>Аспект безопасности  (согласно 384-ФЗ)</xs:documentation>
-										</xs:annotation>
-										<xs:simpleType>
-											<xs:restriction base="xs:string" >
-												<xs:enumeration value="механической безопасности"/>
-												<xs:enumeration value="пожарной безопасности"/>
-												<xs:enumeration value="безопасности при опасных природных процессах и явлениях и (или) техногенных воздействиях"/>
-												<xs:enumeration value="безопасных для здоровья человека условий проживания и пребывания в зданиях и сооружениях"/>
-												<xs:enumeration value="безопасности для пользователей зданиями и сооружениями"/>
-												<xs:enumeration value="доступности зданий и сооружений для инвалидов и других групп населения с ограниченными возможностями передвижения"/>
-												<xs:enumeration value="энергетической эффективности зданий и сооружений"/>
-												<xs:enumeration value="безопасного уровня воздействия зданий и сооружений на окружающую среду"/>
-											</xs:restriction>
-										</xs:simpleType>
-									</xs:attribute>
-									-->
 									<xs:attribute name="DocStatus">
+										<!-- NtdDocument.Status -->
 										<xs:annotation>
-											<xs:documentation>Текущий статус документа: действует/заменене/отменен</xs:documentation>
+											<xs:documentation>Статус документа (NtdDocument.Status)</xs:documentation>
 										</xs:annotation>
 										<xs:simpleType>
 											<xs:restriction base="xs:string">
+												<xs:enumeration value="В разработке"/>
+												<xs:enumeration value="Проект"/>
 												<xs:enumeration value="Действует"/>
 												<xs:enumeration value="Заменен"/>
 												<xs:enumeration value="Отменен"/>
@@ -535,23 +553,26 @@
 							</xs:element>
 							<xs:element name="ReqMetadata">
 								<xs:annotation>
-									<xs:documentation>Метадата требования</xs:documentation>
+									<xs:documentation>Метаданные требования</xs:documentation>
 								</xs:annotation>
 								<xs:complexType>
 									<xs:sequence>
 										<xs:element name="ReqUId" type="xs:integer">
+											<!-- NtdRequirements.UIN -->
 											<xs:annotation>
-												<xs:documentation>Уникальный идентификатор требования</xs:documentation>
+												<xs:documentation>ЮИН требования (NtdRequirements.UIN)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="ReqNumber" type="xs:string">
+											<!-- NtdRequirements.Number -->
 											<xs:annotation>
-												<xs:documentation>Номер требования в источнике</xs:documentation>
+												<xs:documentation>Порядковый номер (NtdRequirements.Number)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="SectionOfDoc" type="xs:string" minOccurs="0">
+											<!-- NtdDocumentSection.Title -->
 											<xs:annotation>
-												<xs:documentation>Раздел документа</xs:documentation>
+												<xs:documentation>Раздел документа (NtdDocumentSection.Title)</xs:documentation>
 											</xs:annotation>
 										</xs:element>
 										<xs:element name="IsComputable" type="xs:boolean">
@@ -559,11 +580,20 @@
 												<xs:documentation>Программно проверяемое требование</xs:documentation>
 											</xs:annotation>
 										</xs:element>
-										<!-- BA: Добавлен элемент SelfContained для понимания, является ли информация из требования достаточной для проверки или оно содержит ссылки на внешние данные -->
-										<xs:element name="SelfContained" type="xs:boolean">
+										<!-- BA: Добавлен элемент NeedDataLink с информацией о ссылках на другие данные, важные для понимания этого требования, без которых это требование нельзя считать достаточным для корректной проверки проектируемой модели -->
+										<xs:element name="NeedDataLinks" minOccurs="0" >
 											<xs:annotation>
-												<xs:documentation>Признак самодостаточности данных требования</xs:documentation>
+												<xs:documentation>Ссылки на другие данные, дополняющие это требование, без которых оно не может считаться достаточным</xs:documentation>
 											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="NeedDataLink" type="xs:string" maxOccurs="unbounded">
+														<xs:annotation>
+															<xs:documentation>Ссылка на другие данные, дополняющие это требование</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
 										</xs:element>
 										<xs:element name="ReqObject">
 											<xs:annotation>
@@ -577,6 +607,7 @@
 														</xs:annotation>
 														<xs:complexType>
 															<xs:sequence>
+																<!-- NtdRequirementsObjectNorm скорее всего, здесь выбираем в конструкторе из кси, а вот складываем в эту сущность и добавляем связь с требованием -->
 																<xs:element name="ObjectName" type="xs:string">
 																	<xs:annotation>
 																		<xs:documentation>Наименование объекта</xs:documentation>
@@ -584,7 +615,7 @@
 																</xs:element>
 																<xs:element name="ObjectID" type="KSIIdentification" minOccurs="0" maxOccurs="unbounded">
 																	<xs:annotation>
-																		<xs:documentation>ID объекта</xs:documentation>
+																		<xs:documentation>Класс/элемент КСИ</xs:documentation>
 																	</xs:annotation>
 																</xs:element>
 															</xs:sequence>
@@ -600,7 +631,7 @@
 										</xs:element>
 										<xs:element name="ReqLinks" minOccurs="0">
 											<xs:annotation>
-												<xs:documentation>Ссылки в составе требования</xs:documentation>
+												<xs:documentation>Ссылки</xs:documentation>
 											</xs:annotation>
 											<xs:complexType>
 												<xs:sequence>
@@ -618,6 +649,7 @@
 										</xs:element>
 									</xs:sequence>
 									<xs:attribute name="ReqType">
+										<!-- возможно, NtdRequirementsType, возможно, NtdRequirementsRegulation -->
 										<xs:annotation>
 											<xs:documentation>Тип требования</xs:documentation>
 										</xs:annotation>
@@ -662,7 +694,7 @@
 													<xs:extension base="ReqElement">
 														<xs:attribute name="ReqElementUId" use="required">
 															<xs:annotation>
-																<xs:documentation>Уникальный идентификатор структурного  элемента</xs:documentation>
+																<xs:documentation>Уникальный идентификатор графического элемента</xs:documentation>
 															</xs:annotation>
 															<xs:simpleType>
 																<xs:restriction base="xs:string">
@@ -692,7 +724,7 @@
 													<xs:extension base="ReqElement">
 														<xs:attribute name="ReqElementUId" use="required">
 															<xs:annotation>
-																<xs:documentation>Уникальный идентификатор структурного  элемента</xs:documentation>
+																<xs:documentation>Уникальный идентификатор табличного элемента</xs:documentation>
 															</xs:annotation>
 															<xs:simpleType>
 																<xs:restriction base="xs:string">
@@ -722,7 +754,7 @@
 													<xs:extension base="ReqElement">
 														<xs:attribute name="ReqElementUId" use="required">
 															<xs:annotation>
-																<xs:documentation>Уникальный идентификатор структурного  элемента</xs:documentation>
+																<xs:documentation>Уникальный идентификатор формульного элемента</xs:documentation>
 															</xs:annotation>
 															<xs:simpleType>
 																<xs:restriction base="xs:string">
@@ -1007,8 +1039,7 @@
 														</xs:simpleType>
 													</xs:element>
 												</xs:sequence>
-												<!-- BA: Добавлено ограничение на обязательность PRuleID -->
-												<xs:attribute name="PRuleID" type="xs:integer" use="required">
+												<xs:attribute name="PRuleID" type="xs:integer">
 													<xs:annotation>
 														<xs:documentation>ID программного правила</xs:documentation>
 													</xs:annotation>
@@ -1060,14 +1091,5 @@
 				</xs:element>
 			</xs:sequence>
 		</xs:complexType>
-		<!-- BA: Добавлено определение PRuleID как уникального идентификатора и добавлено ограничение, что PRuleLink должен ссылаться на существующий PRuleID -->
-		<xs:key name="kPRuleID">
-			<xs:selector xpath="PLOGIC/PRules/PRule"/>
-			<xs:field xpath="@PRuleID"/>
-		</xs:key>
-		<xs:keyref name="krPRuleLink" refer="kPRuleID">
-			<xs:selector xpath="DMODEL/LogicalUnits/LogicalUnit"/>
-			<xs:field xpath="PRuleLink"/>
-		</xs:keyref>
 	</xs:element>
 </xs:schema>

@@ -37,6 +37,7 @@
             @add-property="handleAddProperty"
             @add-relation="handleAddRelation"
             @add-logical-unit="handleAddLogicalUnit"
+            @add-dynamic-item="handleAddDynamicItem"
           />
         </div>
       </form>
@@ -91,7 +92,8 @@ const {
   handleAddEntity, 
   handleAddProperty,
   handleAddRelation,
-  handleAddLogicalUnit
+  handleAddLogicalUnit,
+  handleAddDynamicItem
 } = useForm();
 
 // Предоставляем схему для дочерних компонентов

@@ -95,9 +95,7 @@ const calculateValue = (): void => {
         .join(" AND ")}`;
       
     }
-    if (updatedValue) {
-      emit("update-value", updatedValue);
-    }
+    emit("update-value", updatedValue);
 }
 
 watch(

@@ -21,6 +21,7 @@ export function useForm() {
   const elementValues = reactive<{ [path: string]: any }>({});
   const elementPathMap = new Map<string, any>();
   const errorMessage = ref<string | null>(null);
+  const pruleTemplate = ref<any | null>(null);
 
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -93,6 +94,7 @@ export function useForm() {
       applyConditionTypeToCondFields(
         schema.relationStructur?.complexType?.sequence || {}
       );
+      preparePRulesTemplateAndClear();
       addPRuleFieldsToLogicalUnits(schema.elements);
       initializeElementValues(schema.elements);
       errorMessage.value = null;
@@ -140,6 +142,19 @@ export function useForm() {
     };
 
     Object.values(schema.elements).forEach(processElement);
+  };
+
+  const preparePRulesTemplateAndClear = () => {
+    const prulesSequence = getPRulesSequence();
+    if (!prulesSequence || typeof prulesSequence !== "object") return;
+
+    const template =
+      prulesSequence.PRule || Object.values(prulesSequence || {})[0];
+    if (template) {
+      pruleTemplate.value = deepCopyElement(template);
+    }
+
+    Object.keys(prulesSequence).forEach((key) => delete prulesSequence[key]);
   };
 
   const ensurePRuleLogicalUnitField = (logicalUnit: any) => {
@@ -239,53 +254,74 @@ export function useForm() {
       "elements.Requirement.complexType.sequence.PLOGIC.complexType.sequence.PRules.complexType.sequence"
     );
 
+  const collectPRuleLogicalUnitValues = (
+    elements: { [key: string]: any }
+  ): string[] => {
+    const result: string[] = [];
+
+    Object.values(elements || {}).forEach((element: any) => {
+      if (element?.name === "LogicalUnit") {
+        const prule = element.complexType?.sequence?.PRuleLogicalUnit;
+        if (
+          prule &&
+          prule.value !== undefined &&
+          prule.value !== null &&
+          prule.value !== ""
+        ) {
+          result.push(String(prule.value));
+        }
+      }
+
+      if (element.complexType?.sequence) {
+        result.push(...collectPRuleLogicalUnitValues(element.complexType.sequence));
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        result.push(
+          ...collectPRuleLogicalUnitValues(
+            element.complexType.complexContent.extension.sequence
+          )
+        );
+      }
+      if (element.complexType?.all) {
+        result.push(...collectPRuleLogicalUnitValues(element.complexType.all));
+      }
+      if (element.complexType?.choice?.elements) {
+        result.push(
+          ...collectPRuleLogicalUnitValues(element.complexType.choice.elements)
+        );
+      }
+    });
+
+    return result;
+  };
+
   const syncPRulesWithLogicalUnits = () => {
     const prulesSequence = getPRulesSequence();
     if (!prulesSequence || typeof prulesSequence !== "object") return;
 
-    const entries = Object.entries(elementValues)
-      .filter(
-        ([path, val]) =>
-          path.endsWith("PRuleLogicalUnit") &&
-          val !== undefined &&
-          val !== null &&
-          val !== ""
-      )
-      .map(([path, val]) => ({
-        path,
-        value: String(val),
-        logicalUnitId: path.match(/LogicalUnit_\d+/)?.[0],
-      }));
+    const entries = collectPRuleLogicalUnitValues(schema.elements).map(
+      (val) => String(val)
+    );
 
     const template =
-      prulesSequence.PRule || Object.values(prulesSequence || {})[0];
+      pruleTemplate.value ||
+      prulesSequence.PRule ||
+      Object.values(prulesSequence || {})[0];
     if (!template) return;
 
     const nextSequence: Record<string, any> = {};
-    entries.forEach((entry, idx) => {
+    entries.forEach((value, idx) => {
       const key = generateUid('PRule_');
       const prule = deepCopyElement(template);
 
       if (prule.complexType?.sequence?.PRuleData) {
-        prule.complexType.sequence.PRuleData.value = entry.value;
+        prule.complexType.sequence.PRuleData.value = value;
       } else {
-        prule.value = entry.value;
+        prule.value = value;
       }
 
       if (prule.complexType?.attributes?.PRuleID) {
         prule.complexType.attributes.PRuleID.value = idx + 1;
-      }
-
-      if (prule.complexType?.sequence?.PRuleType) {
-        
-        const isManual = entry.logicalUnitId
-          ? !!schema.pRuleManualInputs?.[entry.logicalUnitId]
-          : false;
-        prule.complexType.sequence.PRuleType.value = isManual
-          ? "ручной"
-          : "автоматический";
-
-          console.log(entry, prule)
       }
 
       nextSequence[key] = prule;
@@ -542,19 +578,16 @@ export function useForm() {
 
     if (targetElement && targetElement.complexType?.sequence) {
       const newKey = `Relation_${Date.now()}`;
-      const newItem = reactive({
-        ...schema.relationStructur,
-        complexType: {
-          ...schema.relationStructur.complexType,
-          sequence: {
-            ...schema.relationStructur.complexType?.sequence,
-            RelationUid: {
-              ...schema.relationStructur.complexType?.sequence?.RelationUid,
-              value: newKey,
-            },
-          },
-        },
-      });
+      const newItem = reactive(deepCopyElement(schema.relationStructur));
+
+      if (newItem.complexType?.sequence) {
+        if (newItem.complexType.sequence.RelationUid) {
+          newItem.complexType.sequence.RelationUid.value = newKey;
+        }
+        if (newItem.complexType.sequence.RelationRole) {
+          newItem.complexType.sequence.RelationRole.value = "";
+        }
+      }
       applyConditionTypeToCondFields(newItem.complexType?.sequence || {});
       targetElement.complexType.sequence = reactive({
         ...targetElement.complexType.sequence,
@@ -655,6 +688,7 @@ export function useForm() {
 
   const generateXML = () => {
     try {
+      syncPRulesWithLogicalUnits();
       errorMessage.value = null;
       generatedXML.value = generateXMLWithValidation(schema);
     } catch (error) {

@@ -195,7 +195,7 @@
     </div>
     <BaseFieldSelect
       v-else-if="element.simpleType?.restriction?.enumerations"
-      :value="element.value"
+      v-model="element.value"
       :key="`${currentPath}-${element.name}-select`"
       :options="element.simpleType.restriction.enumerations"
       :name="element.name"

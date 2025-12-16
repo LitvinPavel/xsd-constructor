@@ -2,7 +2,13 @@
 import { ref, reactive, nextTick, markRaw } from "vue";
 import { XSDParser } from "@/utils/xsdParser";
 import { generateXMLWithValidation } from "@/utils/xmlGenerator";
-import { deepCopyElement, getNestedValue, generateUid, isUidFieldName } from "@/utils/xsdUtils";
+import {
+  deepCopyElement,
+  getNestedValue,
+  generateUid,
+  isUidFieldName,
+  clearElementValues,
+} from "@/utils/xsdUtils";
 import type { XSDSchema } from "@/types";
 
 export function useForm() {
@@ -112,6 +118,8 @@ export function useForm() {
       "Property",
       "Relation",
       "LogicalUnit",
+      "PropertyCond",
+      "RelationCond",
       "KeyWord",
       "Developer",
       "ObjectOfStandartization",
@@ -571,7 +579,8 @@ export function useForm() {
           newItem.complexType.sequence.PropertyID.value = undefined;
         }
         if (newItem.complexType.sequence.PropertyCond) {
-          newItem.complexType.sequence.PropertyCond.value = undefined;
+          // Убираем условие по умолчанию: добавляется отдельной кнопкой
+          delete newItem.complexType.sequence.PropertyCond;
         }
         applyConditionTypeToCondFields(newItem.complexType.sequence);
 
@@ -602,6 +611,10 @@ export function useForm() {
         if (newItem.complexType.sequence.RelationRole) {
           newItem.complexType.sequence.RelationRole.value = "";
         }
+        if (newItem.complexType.sequence.RelationCond) {
+          // Убираем условие по умолчанию: добавляется отдельной кнопкой
+          delete newItem.complexType.sequence.RelationCond;
+        }
       }
       applyConditionTypeToCondFields(newItem.complexType?.sequence || {});
       targetElement.complexType.sequence = reactive({
@@ -629,6 +642,8 @@ export function useForm() {
       GraphView: "GraphElement",
       TableView: "TableElement",
       FormulasView: "FormulaElement",
+      PropertyCond: "Condition",
+      RelationCond: "Condition",
     };
 
     const sequence = targetElement.complexType?.sequence;
@@ -677,6 +692,48 @@ export function useForm() {
     });
 
     initializeElementValues({ [newKey]: newItem }, elementPath);
+  };
+
+  const handleAddConditionElement = async (
+    elementPath: string,
+    condName: "PropertyCond" | "RelationCond"
+  ) => {
+    await nextTick();
+    const targetElement = elementPathMap.get(elementPath);
+    if (!targetElement) return;
+
+    if (targetElement.complexType?.sequence?.[condName]) {
+      return; // только один элемент
+    }
+
+    const conditionTemplate =
+      schema.complexTypes?.ConditionType || schema.complexTypes?.Condition;
+
+    const template =
+      dynamicTemplates[condName] ||
+      (conditionTemplate
+        ? {
+            name: condName,
+            complexType: deepCopyElement(conditionTemplate),
+          }
+        : dynamicTemplates.Condition);
+        console.log(dynamicTemplates, condName)
+    if (!template) return;
+
+    const newItem = reactive(deepCopyElement(template));
+
+    if (!targetElement.complexType) {
+      targetElement.complexType = {};
+    }
+    if (!targetElement.complexType.sequence) {
+      targetElement.complexType.sequence = {};
+    }
+
+    targetElement.complexType.sequence[condName] = newItem;
+    applyConditionTypeToCondFields({ [condName]: newItem });
+    clearElementValues(newItem);
+    generateUniqueIds(newItem, "Condition");
+    initializeElementValues({ [condName]: newItem }, elementPath);
   };
 
   const handleAddLogicalUnit = async (elementPath: string) => {
@@ -793,5 +850,6 @@ export function useForm() {
     handleAddRelation,
     handleAddLogicalUnit,
     handleAddDynamicItem,
+    handleAddConditionElement
   };
 }

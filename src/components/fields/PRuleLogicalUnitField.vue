@@ -68,6 +68,7 @@ const onToggleInputMode = (e: ValueChangedEvent) => {
 }
 
 const calculateValue = (): void => {
+  console.log("message")
   const logicalUnitId = props.path.match(/LogicalUnit_\d+/)?.[0];
     const pRuleLogicalUnitMap = schema.pRuleLogicalUnits?.[logicalUnitId as string];
 
@@ -100,7 +101,8 @@ const calculateValue = (): void => {
 
 watch(
   () => schema.pRuleLogicalUnits,
-  () => calculateValue()
+  () => calculateValue(),
+  { deep: true }
 );
 
 watch(logicalUnitId, syncManualFlagFromSchema, { immediate: true });

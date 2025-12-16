@@ -11,7 +11,6 @@
     ]"
     :style="level > 0 ? { marginLeft: `${level * 4}px` } : undefined"
   >
-  {{ element.name }}
     <div v-if="!element.type && element.complexType?.sequence" class="w-full">
       <div
         v-if="element.annotation?.documentation"
@@ -86,8 +85,25 @@
               @add-relation="handleChildAddRelation"
               @add-logical-unit="emit('add-logical-unit', $event)"
               @add-dynamic-item="handleChildAddDynamic"
+              @add-condition="handleChildAddCondition"
             />
           </div>
+          <DxButton
+              v-if="element.name === 'Property' && !element.complexType.sequence?.PropertyCond"
+              text="+ Добавить условие"
+              type="default"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleAddCondition('PropertyCond')"
+            />
+          <DxButton
+              v-else-if="element.name === 'Relation' && !element.complexType.sequence?.RelationCond"
+              text="+ Добавить условие"
+              type="default"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleAddCondition('RelationCond')"
+            />
         </template>
 
         <ChoiceField
@@ -116,6 +132,7 @@
               @add-relation="handleChildAddRelation"
               @add-logical-unit="emit('add-logical-unit', $event)"
               @add-dynamic-item="handleChildAddDynamic"
+              @add-condition="handleChildAddCondition"
             />
           </div>
         </template>
@@ -226,7 +243,7 @@
 import { computed, nextTick, ref, inject, watch } from "vue";
 import DxButton from "devextreme-vue/button";
 import ComplexTypeInstanceView from "@/components/ComplexTypeInstanceView.vue";
-import type { ComplexTypeInstance, XSDSchema } from "@/types";
+import type { ComplexTypeInstance, XSDElement, XSDSchema } from "@/types";
 import {
   isComplexType,
   canRemoveItem,
@@ -257,6 +274,7 @@ interface Emits {
   (e: "add-relation", path: string): void;
   (e: "add-logical-unit", path: string): void;
   (e: "add-dynamic-item", path: string): void;
+  (e: "add-condition", path: string, condName: "PropertyCond" | "RelationCond"): void;
 }
 
 const props = defineProps<Props>();
@@ -309,7 +327,7 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     "TableView",
     "FormulasView"
   ];
-  console.log(props.element.name)
+
   return dynamicAddables.includes(props.element.name);
 });
 
@@ -403,6 +421,10 @@ const handleAddDynamic = async () => {
   emit("add-dynamic-item", currentPath.value);
 };
 
+const handleAddCondition = (condName: "PropertyCond" | "RelationCond") => {
+  emit("add-condition", currentPath.value, condName);
+};
+
 const handleChildAddEntity = (path: string) => {
   emit("add-entity", path);
 };
@@ -419,9 +441,58 @@ const handleChildAddDynamic = (path: string) => {
   emit("add-dynamic-item", path);
 };
 
-const removeItem = (key: string) => {
+const handleChildAddCondition = (
+  path: string,
+  condName: "PropertyCond" | "RelationCond"
+) => {
+  emit("add-condition", path, condName);
+};
+
+const removeItemDependencies = (item: XSDElement, logicalUnitId: string | undefined) => {
+    if (logicalUnitId && schema.pRuleLogicalUnits?.[logicalUnitId]) {
+      const luMap = { ...schema.pRuleLogicalUnits[logicalUnitId] };
+      const relationUid = item?.complexType?.sequence?.RelationUid?.value;
+      const relationCondUid = item?.complexType?.sequence?.RelationCond?.complexType?.sequence?.ConditionUid?.value;
+      const propertyCondUid = item?.complexType?.sequence?.PropertyCond?.complexType?.sequence?.ConditionUid?.value;
+
+      if (relationUid && luMap[relationUid]) {
+        delete luMap[relationUid];
+      }
+      if (relationCondUid && luMap[relationCondUid]) {
+        delete luMap[relationCondUid];
+      }
+      if (propertyCondUid && luMap[propertyCondUid]) {
+        delete luMap[propertyCondUid];
+      }
+
+      const nextPruMap = { ...schema.pRuleLogicalUnits };
+      if (Object.keys(luMap).length) {
+        nextPruMap[logicalUnitId] = luMap;
+      } else {
+        delete nextPruMap[logicalUnitId];
+      }
+      schema.pRuleLogicalUnits = nextPruMap;
+    }
+}
+
+const removeItem = async (key: string) => {
   const item = props.element.complexType?.sequence?.[key];
   if (item && canRemoveItem(item.name) && !isKSIIdentificationField(item)) {
+    const removedPath = getItemPath(String(key));
+    const logicalUnitId = removedPath.match(/LogicalUnit_\d+/)?.[0] as string;
+    if (item.name === 'LogicalUnit' && schema.pRuleLogicalUnits?.[logicalUnitId]) {
+      delete schema.pRuleLogicalUnits[logicalUnitId];
+    } else if (item.name === 'Entity') {
+      const { Properties } = item?.complexType?.sequence;
+      Object.keys(Properties?.complexType?.sequence).forEach((key: string) => {
+        if (key) {
+          removeItemDependencies(Properties.complexType.sequence[key], logicalUnitId)
+        }
+      })
+    } else {
+      removeItemDependencies(item, logicalUnitId)
+    }
+    await nextTick();
     delete props.element.complexType.sequence[key];
   }
 };

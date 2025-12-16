@@ -33,7 +33,7 @@ export function canRemoveItem(itemName: string): boolean {
 }
 
 export function isUidFieldName(name?: string): boolean {
-  return typeof name === 'string' && /uid$/i.test(name);
+  return typeof name === 'string' && /uid$/i.test(name) && name !== 'DocUId' && name !== 'ReqUId';
 }
 
 export function isKSIIdentificationField(item: any): boolean {

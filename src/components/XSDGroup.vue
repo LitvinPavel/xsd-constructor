@@ -3,11 +3,11 @@
     class="mb-4"
     :class="[
       level === 0 ? 'p-4' : 'pl-4',
-      { 'border rounded-lg border-gray-200 p-4': canRemoveItem(element.name) },
+      { 'border rounded-lg border-gray-200 p-4 pt-10': canRemoveItem(element.name) },
       { 'bg-gray-50': element.name === 'LogicalUnit' },
       { 'bg-slate-50': element.name === 'Entity' },
       { 'bg-stone-50': element.name === 'Relation' },
-      { 'bg-neutral-50': element.name === 'Property' },
+      { 'bg-neutral-50': element.name === 'Property' }
     ]"
     :style="level > 0 ? { marginLeft: `${level * 4}px` } : undefined"
   >
@@ -17,6 +17,7 @@
         class="mb-2 pb-2 flex justify-between items-center flex-wrap gap-4"
         :class="{
           'border-b border-gray-100': !isEntitiesOrPropertiesOrRelations,
+          '-mt-8': canRemoveItem(element.name)
         }"
       >
         <div class="flex items-center gap-2">
@@ -59,7 +60,7 @@
           >
             <div
               v-if="canRemoveItem(item.name)"
-              class="absolute right-0 top-0 p-4"
+              class="absolute right-0 top-0"
             >
               <DxButton
                 @click="removeItem(String(key))"
@@ -192,7 +193,7 @@
       :key="`${currentPath}-${element.name}`"
       v-model="selectedComplexTypeId"
       :name="element.name"
-      :label="element.name"
+      :label="element.annotation.documentation"
       :options="availableMockInstances"
       option-key="id"
       label-key="name"

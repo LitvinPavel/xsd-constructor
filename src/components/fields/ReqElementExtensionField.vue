@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2 mb-1">
+  <div class="p-2 my-1">
     <BaseFieldInput
       v-for="(field, key) in schema?.complexTypes?.ReqElement?.attributes"
       :key="key"

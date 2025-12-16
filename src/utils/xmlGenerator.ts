@@ -1,6 +1,77 @@
 import * as builder from "xmlbuilder";
 import type { XSDElement, XSDSchema } from "@/types";
 
+const DATE_VALUE_REGEX =
+  /^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
+
+const normalizeDateValue = (value: unknown, type?: string): string | null => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const pad = (num: number) => String(num).padStart(2, "0");
+  const buildFromParts = (
+    year?: number | string,
+    month?: number | string,
+    day?: number | string,
+    hours?: number | string,
+    minutes?: number | string
+  ) => {
+    const datePart = `${pad(Number(day))}.${pad(Number(month))}.${year}`;
+    if (type === "xs:time" || type === "time") {
+      if (hours === undefined || minutes === undefined) return null;
+      return `${pad(Number(hours))}:${pad(Number(minutes))}`;
+    }
+    if (
+      type === "xs:dateTime" ||
+      type === "datetime-local" ||
+      type === "time"
+    ) {
+      if (hours === undefined || minutes === undefined) return `${datePart}T00:00:00`;
+      return `${datePart}T${pad(Number(hours))}:${pad(Number(minutes))}`;
+    }
+    return datePart;
+  };
+
+  if (value instanceof Date) {
+    return buildFromParts(
+      value.getFullYear(),
+      value.getMonth() + 1,
+      value.getDate(),
+      value.getHours(),
+      value.getMinutes()
+    );
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const match = trimmed.match(DATE_VALUE_REGEX);
+    if (match) {
+      const [, dd, mm, yyyy, hh, min] = match;
+      return buildFromParts(yyyy, mm, dd, hh, min);
+    }
+    return trimmed;
+  }
+
+  return String(value);
+};
+
+const formatValueByType = (value: unknown, type?: string): string | null => {
+  if (value === null || value === undefined || value === "") return null;
+
+  if (type === "xs:date" || type === "date") {
+    return normalizeDateValue(value, "xs:date");
+  }
+
+  if (type === "xs:dateTime" || type === "datetime-local") {
+    return normalizeDateValue(value, "xs:dateTime");
+  }
+
+  if (type === "xs:time" || type === "time") {
+    return normalizeDateValue(value, "xs:time");
+  }
+
+  return String(value);
+};
+
 export function generateXMLWithValidation(schema: XSDSchema): string {
   if (!schema?.elements || Object.keys(schema.elements).length === 0) {
     throw new Error("Invalid schema: no elements found");
@@ -71,7 +142,10 @@ function processElementWithValidation(parent: any, element: any): void {
     !element.complexType &&
     !isComplexType(element.type)
   ) {
-    currentNode.txt(String(element.value));
+    const formattedValue = formatValueByType(element.value, element.type);
+    if (formattedValue !== null) {
+      currentNode.txt(formattedValue);
+    }
   }
 
   // Обработка дочерних элементов
@@ -125,9 +199,12 @@ function processElementWithValidation(parent: any, element: any): void {
     for (const [attrKey, child] of Object.entries(
       element.complexType.attributes
     )) {
-      const value = (child as XSDElement).value;
-      if (value !== undefined && value !== null && value !== "") {
-        currentNode.att(attrKey, String(value));
+      const value = formatValueByType(
+        (child as XSDElement).value,
+        (child as XSDElement).type
+      );
+      if (value !== null) {
+        currentNode.att(attrKey, value);
       }
     }
   }

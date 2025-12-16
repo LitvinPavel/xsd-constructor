@@ -22,6 +22,7 @@
       :disabled="disabled"
       :placeholder="`Введите значение для поля ${name}`"
       :type="type"
+      :display-format="type === 'date' ? 'dd.MM.yyyy': 'DD.MM.yyyy HH:mm'"
       @value-changed="onInput"
       class="flex-1"
     />

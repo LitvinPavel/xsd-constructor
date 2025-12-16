@@ -89,21 +89,27 @@
             />
           </div>
           <DxButton
-              v-if="element.name === 'Property' && !element.complexType.sequence?.PropertyCond"
-              text="+ Добавить условие"
-              type="default"
-              styling-mode="outlined"
-              class="ml-10 my-2"
-              @click="handleAddCondition('PropertyCond')"
-            />
+            v-if="
+              element.name === 'Property' &&
+              !element.complexType.sequence?.PropertyCond
+            "
+            text="+ Добавить условие"
+            type="default"
+            styling-mode="outlined"
+            class="ml-10 my-2"
+            @click="handleAddCondition('PropertyCond')"
+          />
           <DxButton
-              v-else-if="element.name === 'Relation' && !element.complexType.sequence?.RelationCond"
-              text="+ Добавить условие"
-              type="default"
-              styling-mode="outlined"
-              class="ml-10 my-2"
-              @click="handleAddCondition('RelationCond')"
-            />
+            v-else-if="
+              element.name === 'Relation' &&
+              !element.complexType.sequence?.RelationCond
+            "
+            text="+ Добавить условие"
+            type="default"
+            styling-mode="outlined"
+            class="ml-10 my-2"
+            @click="handleAddCondition('RelationCond')"
+          />
         </template>
 
         <ChoiceField
@@ -157,7 +163,10 @@
               :label="attr.annotation.documentation"
               option-key="value"
               label-key="value"
-              :disabled="isUidFieldName(attr.name) || isPRuleFieldDisabled(attr, currentPath, attr.name)"
+              :disabled="
+                isUidFieldName(attr.name) ||
+                isPRuleFieldDisabled(attr, currentPath, attr.name)
+              "
             />
             <BaseFieldInput
               v-else-if="attr.type"
@@ -167,7 +176,10 @@
               :label="attr.annotation.documentation"
               :type="getInputType(attr.type)"
               :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
-              :disabled="isUidFieldName(attr.name) || isPRuleFieldDisabled(attr, currentPath, attr.name)"
+              :disabled="
+                isUidFieldName(attr.name) ||
+                isPRuleFieldDisabled(attr, currentPath, attr.name)
+              "
               @input="($event) => (attr.value = $event)"
             />
           </div>
@@ -233,7 +245,10 @@
       :label="element.annotation?.documentation"
       :type="getInputType(element.type)"
       :pattern="element.pattern || element.simpleType?.restriction?.pattern"
-      :disabled="isUidFieldName(element.name) || isPRuleFieldDisabled(element, currentPath)"
+      :disabled="
+        isUidFieldName(element.name) ||
+        isPRuleFieldDisabled(element, currentPath)
+      "
       @input="handleInputChange"
     />
   </div>
@@ -274,7 +289,11 @@ interface Emits {
   (e: "add-relation", path: string): void;
   (e: "add-logical-unit", path: string): void;
   (e: "add-dynamic-item", path: string): void;
-  (e: "add-condition", path: string, condName: "PropertyCond" | "RelationCond"): void;
+  (
+    e: "add-condition",
+    path: string,
+    condName: "PropertyCond" | "RelationCond"
+  ): void;
 }
 
 const props = defineProps<Props>();
@@ -307,7 +326,12 @@ const hasComplexTypeValue = computed(() => {
 
 const availableMockInstances = computed(() => {
   if (!props.element.type) return [];
-  return mockData[props.element.type as keyof typeof mockData] || [];
+  const data = mockData[props.element.type as keyof typeof mockData] || [];
+  if (props.element.type === "KSIIdentification") {
+    if (props.element.name === "PropertyID") {
+      return data.filter((d) => d.data.KSITableCode === "Prp");
+    } else return data.filter((d) => d.data.KSITableCode !== "Prp");
+  } else return data;
 });
 
 const isEntitiesOrPropertiesOrRelations = computed(() => {
@@ -325,7 +349,7 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     "NeedDataLinks",
     "GraphView",
     "TableView",
-    "FormulasView"
+    "FormulasView",
   ];
 
   return dynamicAddables.includes(props.element.name);
@@ -448,49 +472,62 @@ const handleChildAddCondition = (
   emit("add-condition", path, condName);
 };
 
-const removeItemDependencies = (item: XSDElement, logicalUnitId: string | undefined) => {
-    if (logicalUnitId && schema.pRuleLogicalUnits?.[logicalUnitId]) {
-      const luMap = { ...schema.pRuleLogicalUnits[logicalUnitId] };
-      const relationUid = item?.complexType?.sequence?.RelationUid?.value;
-      const relationCondUid = item?.complexType?.sequence?.RelationCond?.complexType?.sequence?.ConditionUid?.value;
-      const propertyCondUid = item?.complexType?.sequence?.PropertyCond?.complexType?.sequence?.ConditionUid?.value;
+const removeItemDependencies = (
+  item: XSDElement,
+  logicalUnitId: string | undefined
+) => {
+  if (logicalUnitId && schema.pRuleLogicalUnits?.[logicalUnitId]) {
+    const luMap = { ...schema.pRuleLogicalUnits[logicalUnitId] };
+    const relationUid = item?.complexType?.sequence?.RelationUid?.value;
+    const relationCondUid =
+      item?.complexType?.sequence?.RelationCond?.complexType?.sequence
+        ?.ConditionUid?.value;
+    const propertyCondUid =
+      item?.complexType?.sequence?.PropertyCond?.complexType?.sequence
+        ?.ConditionUid?.value;
 
-      if (relationUid && luMap[relationUid]) {
-        delete luMap[relationUid];
-      }
-      if (relationCondUid && luMap[relationCondUid]) {
-        delete luMap[relationCondUid];
-      }
-      if (propertyCondUid && luMap[propertyCondUid]) {
-        delete luMap[propertyCondUid];
-      }
-
-      const nextPruMap = { ...schema.pRuleLogicalUnits };
-      if (Object.keys(luMap).length) {
-        nextPruMap[logicalUnitId] = luMap;
-      } else {
-        delete nextPruMap[logicalUnitId];
-      }
-      schema.pRuleLogicalUnits = nextPruMap;
+    if (relationUid && luMap[relationUid]) {
+      delete luMap[relationUid];
     }
-}
+    if (relationCondUid && luMap[relationCondUid]) {
+      delete luMap[relationCondUid];
+    }
+    if (propertyCondUid && luMap[propertyCondUid]) {
+      delete luMap[propertyCondUid];
+    }
+
+    const nextPruMap = { ...schema.pRuleLogicalUnits };
+    if (Object.keys(luMap).length) {
+      nextPruMap[logicalUnitId] = luMap;
+    } else {
+      delete nextPruMap[logicalUnitId];
+    }
+    schema.pRuleLogicalUnits = nextPruMap;
+  }
+};
 
 const removeItem = async (key: string) => {
   const item = props.element.complexType?.sequence?.[key];
   if (item && canRemoveItem(item.name) && !isKSIIdentificationField(item)) {
     const removedPath = getItemPath(String(key));
     const logicalUnitId = removedPath.match(/LogicalUnit_\d+/)?.[0] as string;
-    if (item.name === 'LogicalUnit' && schema.pRuleLogicalUnits?.[logicalUnitId]) {
+    if (
+      item.name === "LogicalUnit" &&
+      schema.pRuleLogicalUnits?.[logicalUnitId]
+    ) {
       delete schema.pRuleLogicalUnits[logicalUnitId];
-    } else if (item.name === 'Entity') {
+    } else if (item.name === "Entity") {
       const { Properties } = item?.complexType?.sequence;
       Object.keys(Properties?.complexType?.sequence).forEach((key: string) => {
         if (key) {
-          removeItemDependencies(Properties.complexType.sequence[key], logicalUnitId)
+          removeItemDependencies(
+            Properties.complexType.sequence[key],
+            logicalUnitId
+          );
         }
-      })
+      });
     } else {
-      removeItemDependencies(item, logicalUnitId)
+      removeItemDependencies(item, logicalUnitId);
     }
     await nextTick();
     delete props.element.complexType.sequence[key];

@@ -37,7 +37,7 @@
       },
       {
         "id": "ksi_3",
-        "name": "Многоквартирный жилой дом высотой до 75 м",
+        "name": "Многоквартирный жилой дом",
         "type": "KSIIdentification",
         "annotation": {
           "documentation": "Идентификация по КСИ"

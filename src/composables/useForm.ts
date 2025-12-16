@@ -277,9 +277,9 @@ export function useForm() {
       "elements.Requirement.complexType.sequence.PLOGIC.complexType.sequence.PRules.complexType.sequence"
     );
 
-  const collectPRuleLogicalUnitValues = (
-    elements: { [key: string]: any }
-  ): string[] => {
+  const collectPRuleLogicalUnitValues = (elements: {
+    [key: string]: any;
+  }): string[] => {
     const result: string[] = [];
 
     Object.values(elements || {}).forEach((element: any) => {
@@ -296,7 +296,9 @@ export function useForm() {
       }
 
       if (element.complexType?.sequence) {
-        result.push(...collectPRuleLogicalUnitValues(element.complexType.sequence));
+        result.push(
+          ...collectPRuleLogicalUnitValues(element.complexType.sequence)
+        );
       }
       if (element.complexType?.complexContent?.extension?.sequence) {
         result.push(
@@ -322,8 +324,8 @@ export function useForm() {
     const prulesSequence = getPRulesSequence();
     if (!prulesSequence || typeof prulesSequence !== "object") return;
 
-    const entries = collectPRuleLogicalUnitValues(schema.elements).map(
-      (val) => String(val)
+    const entries = collectPRuleLogicalUnitValues(schema.elements).map((val) =>
+      String(val)
     );
 
     const template =
@@ -334,7 +336,7 @@ export function useForm() {
 
     const nextSequence: Record<string, any> = {};
     entries.forEach((value, idx) => {
-      const key = generateUid('PRule_');
+      const key = generateUid("PRule_");
       const prule = deepCopyElement(template);
 
       if (prule.complexType?.sequence?.PRuleData) {
@@ -387,14 +389,12 @@ export function useForm() {
         );
         const condRootPath = segments.slice(0, condIndex + 1).join(".");
 
-        const conditionUid =
-          elementPath.endsWith("ConditionUid")
-            ? value
-            : elementValues[`${condRootPath}.ConditionUid`];
-        const conditionRole =
-          elementPath.endsWith("ConditionRole")
-            ? value
-            : elementValues[`${condRootPath}.ConditionRole`];
+        const conditionUid = elementPath.endsWith("ConditionUid")
+          ? value
+          : elementValues[`${condRootPath}.ConditionUid`];
+        const conditionRole = elementPath.endsWith("ConditionRole")
+          ? value
+          : elementValues[`${condRootPath}.ConditionRole`];
 
         if (conditionUid && conditionRole) {
           schema.pRuleLogicalUnits = {
@@ -527,7 +527,11 @@ export function useForm() {
     await nextTick();
     const targetElement = elementPathMap.get(elementPath);
 
-    if (targetElement && targetElement.complexType?.sequence && schema.entityStructur) {
+    if (
+      targetElement &&
+      targetElement.complexType?.sequence &&
+      schema.entityStructur
+    ) {
       const newKey = `Entity_${Date.now()}`;
       const newItem = reactive(deepCopyElement(schema.entityStructur));
 
@@ -564,7 +568,11 @@ export function useForm() {
 
     const targetElement = elementPathMap.get(elementPath);
 
-    if (targetElement && targetElement.complexType?.sequence && schema.propertyStructur) {
+    if (
+      targetElement &&
+      targetElement.complexType?.sequence &&
+      schema.propertyStructur
+    ) {
       const newKey = `Property_${Date.now()}`;
       const newItem = reactive(deepCopyElement(schema.propertyStructur));
 
@@ -717,7 +725,6 @@ export function useForm() {
             complexType: deepCopyElement(conditionTemplate),
           }
         : dynamicTemplates.Condition);
-        console.log(dynamicTemplates, condName)
     if (!template) return;
 
     const newItem = reactive(deepCopyElement(template));
@@ -850,6 +857,6 @@ export function useForm() {
     handleAddRelation,
     handleAddLogicalUnit,
     handleAddDynamicItem,
-    handleAddConditionElement
+    handleAddConditionElement,
   };
 }

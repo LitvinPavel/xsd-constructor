@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, useId, watch } from "vue";
-import type { ValueChangedEvent } from 'devextreme/ui/check_box';
+import type { ValueChangedEvent } from "devextreme/ui/check_box";
 import type { XSDSchema, XSDElement } from "@/types";
 import BaseFieldInput from "@/components/fields/BaseFieldInput.vue";
 
@@ -65,39 +65,34 @@ const onToggleInputMode = (e: ValueChangedEvent) => {
   if (!isManualInput.value) {
     calculateValue();
   }
-}
+};
 
 const calculateValue = (): void => {
-  console.log("message")
   const logicalUnitId = props.path.match(/LogicalUnit_\d+/)?.[0];
-    const pRuleLogicalUnitMap = schema.pRuleLogicalUnits?.[logicalUnitId as string];
+  const pRuleLogicalUnitMap =
+    schema.pRuleLogicalUnits?.[logicalUnitId as string];
 
-    const beforeThen: string[] = [];
-    const afterThen: string[] = [];
-    let updatedValue = null;
-    if (pRuleLogicalUnitMap) {
-      Object.keys(pRuleLogicalUnitMap).forEach((key: string) => {
-        if (pRuleLogicalUnitMap[key] === "посылка") {
-          beforeThen.push(key);
-        } else if (pRuleLogicalUnitMap[key] === "следствие") {
-          afterThen.push(key);
-        }
-      });
-    }
-    if (beforeThen.length && !afterThen.length) {
-      updatedValue = `${beforeThen
-        .map((key) => `(${key})`)
-        .join(" AND ")}`;
-    }else if (beforeThen.length && afterThen.length) {
-      updatedValue = `IF ${beforeThen
-        .map((key) => `(${key})`)
-        .join(" AND ")} THEN ${afterThen
-        .map((key) => `(${key})`)
-        .join(" AND ")}`;
-      
-    }
-    emit("update-value", updatedValue);
-}
+  const beforeThen: string[] = [];
+  const afterThen: string[] = [];
+  let updatedValue = null;
+  if (pRuleLogicalUnitMap) {
+    Object.keys(pRuleLogicalUnitMap).forEach((key: string) => {
+      if (pRuleLogicalUnitMap[key] === "посылка") {
+        beforeThen.push(key);
+      } else if (pRuleLogicalUnitMap[key] === "следствие") {
+        afterThen.push(key);
+      }
+    });
+  }
+  if (beforeThen.length && !afterThen.length) {
+    updatedValue = `${beforeThen.map((key) => `(${key})`).join(" AND ")}`;
+  } else if (beforeThen.length && afterThen.length) {
+    updatedValue = `IF ${beforeThen
+      .map((key) => `(${key})`)
+      .join(" AND ")} THEN ${afterThen.map((key) => `(${key})`).join(" AND ")}`;
+  }
+  emit("update-value", updatedValue);
+};
 
 watch(
   () => schema.pRuleLogicalUnits,

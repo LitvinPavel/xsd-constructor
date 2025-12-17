@@ -14,6 +14,7 @@ export const REMOVABLE_ITEMS = [
   'GraphElement',
   'TableElement',
   'FormulaElement',
+  'ReqElementObject'
 ];
 export const KSI_IDENTIFICATION_FIELDS = ['EntityID', 'PropertyID'];
 export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations', 'LogicalUnits'];

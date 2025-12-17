@@ -8,6 +8,7 @@ import {
   generateUid,
   isUidFieldName,
   clearElementValues,
+  getReqElementType,
 } from "@/utils/xsdUtils";
 import type { XSDSchema } from "@/types";
 
@@ -94,6 +95,8 @@ export function useForm() {
       });
 
       removeDefaultDMODELElements();
+      applyReqElementDefinition(schema.elements);
+      applyReqElementDefinition(dynamicTemplates);
       applyConditionTypeToCondFields(schema.elements);
       applyConditionTypeToCondFields(
         schema.propertyStructur?.complexType?.sequence || {}
@@ -165,7 +168,21 @@ export function useForm() {
       }
     };
 
+    const removeReqElementObjectFromDefinition = () => {
+      const req = schema.complexTypes?.ReqElement;
+      const reqObjSequence =
+        req?.sequence?.ReqElementObjects?.complexType?.sequence;
+      const reqObj = reqObjSequence?.ReqElementObject;
+      if (reqObj) {
+        if (!dynamicTemplates.ReqElementObject) {
+          dynamicTemplates.ReqElementObject = deepCopyElement(reqObj);
+        }
+        delete reqObjSequence.ReqElementObject;
+      }
+    };
+
     Object.values(schema.elements).forEach(processElement);
+    removeReqElementObjectFromDefinition();
   };
 
   const preparePRulesTemplateAndClear = () => {
@@ -270,6 +287,78 @@ export function useForm() {
         );
       }
     });
+  };
+
+  const applyReqElementDefinition = (
+    target: Record<string, any> | any | undefined
+  ) => {
+    const reqDefinition = schema.complexTypes?.ReqElement;
+    if (!reqDefinition || !target) return;
+
+    const mergeReqElement = (element: any) => {
+      const extension = element?.complexType?.complexContent?.extension;
+      const isReqElementType =
+        element?.type === "ReqElement" ||
+        extension?.base === "ReqElement";
+
+      if (!isReqElementType) return;
+
+      const baseCopy = deepCopyElement(reqDefinition);
+      const mergedSequence = {
+        ...(baseCopy.sequence || {}),
+        ...(extension?.sequence || {}),
+      };
+      const mergedAttributes = {
+        ...(baseCopy.attributes || {}),
+        ...(extension?.attributes || {}),
+      };
+      const mergedChoice = extension?.choice || baseCopy.choice;
+      const mergedAnnotation =
+        element?.complexType?.annotation || baseCopy.annotation;
+
+      element.type = undefined;
+      element.simpleType = undefined;
+      element.complexType = {
+        ...baseCopy,
+        annotation: mergedAnnotation,
+        sequence: mergedSequence,
+        attributes: mergedAttributes,
+        choice: mergedChoice,
+      };
+    };
+
+    const walk = (element: any) => {
+      if (!element || typeof element !== "object") return;
+
+      mergeReqElement(element);
+
+      if (element.complexType?.sequence) {
+        Object.values(element.complexType.sequence).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        Object.values(
+          element.complexType.complexContent.extension.sequence
+        ).forEach((child: any) => walk(child));
+      }
+      if (element.complexType?.all) {
+        Object.values(element.complexType.all).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (element.complexType?.choice?.elements) {
+        Object.values(element.complexType.choice.elements).forEach(
+          (child: any) => walk(child)
+        );
+      }
+    };
+
+    if (target.name) {
+      walk(target);
+    } else {
+      Object.values(target || {}).forEach((item: any) => walk(item));
+    }
   };
 
   const getPRulesSequence = () =>
@@ -432,6 +521,37 @@ export function useForm() {
     return false;
   };
 
+  const applyReqElementDefaults = (element: any) => {
+    const attrs = element?.complexType?.attributes;
+    if (!attrs) return;
+
+    const typeAttr = attrs.ReqElementType;
+    const reqType = getReqElementType(element?.name || "");
+    if (
+      typeAttr &&
+      reqType &&
+      (typeAttr.value === undefined ||
+        typeAttr.value === null ||
+        typeAttr.value === "")
+    ) {
+      typeAttr.value = reqType;
+    }
+
+    const uidAttr =
+      attrs.ReqElementUId || attrs.ReqElementUid || attrs.ReqElementUID;
+    if (
+      uidAttr &&
+      (uidAttr.value === undefined ||
+        uidAttr.value === null ||
+        uidAttr.value === "")
+    ) {
+      uidAttr.value = generateUid(
+        element?.name,
+        uidAttr.simpleType?.restriction?.pattern
+      );
+    }
+  };
+
   const initializeElementValues = (
     elements: { [key: string]: any },
     parentPath: string = ""
@@ -440,51 +560,20 @@ export function useForm() {
       const currentPath = parentPath ? `${parentPath}.${key}` : key;
       elementPathMap.set(currentPath, element);
 
-      if (
-        element.complexType?.complexContent?.extension?.base === "ReqElement"
-      ) {
-        if (!element.value || typeof element.value !== "object") {
-          element.value = {
-            attributes: {},
-            ReqElementData: "",
-            ReqElementNumber: "",
-            ReqElementName: "",
-            ReqElementLink: "",
-            ReqElementNotes: "",
-          };
-        }
+      applyReqElementDefaults(element);
 
-        if (!element.value.attributes) {
-          element.value.attributes = {};
-        }
+      const shouldAutofillUid =
+        isUidFieldName(element.name) &&
+        (element.value === undefined ||
+          element.value === "" ||
+          element.value === null);
 
-        if (element.name === "GraphElement") {
-          element.value.attributes.ReqElementType = "графическое изображение";
-        } else if (element.name === "TableElement") {
-          element.value.attributes.ReqElementType = "таблица";
-        } else if (element.name === "FormulaElement") {
-          element.value.attributes.ReqElementType = "формульная запись";
-        }
+      if (shouldAutofillUid) {
+        generateUniqueIds(element, element.name);
+      }
 
-        if (!element.value.attributes.ReqElementUId) {
-          element.value.attributes.ReqElementUId = generateUid(element.name);
-        }
-
+      if (element.value !== undefined) {
         elementValues[currentPath] = element.value;
-      } else {
-        const shouldAutofillUid =
-          isUidFieldName(element.name) &&
-          (element.value === undefined ||
-            element.value === "" ||
-            element.value === null);
-
-        if (shouldAutofillUid) {
-          generateUniqueIds(element, element.name);
-        }
-
-        if (element.value !== undefined) {
-          elementValues[currentPath] = element.value;
-        }
       }
 
       if (element.name === "Condition" && !element.value) {

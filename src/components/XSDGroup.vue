@@ -3,11 +3,15 @@
     class="mb-4"
     :class="[
       level === 0 ? 'p-4' : 'pl-4',
-      { 'border rounded-lg border-gray-200 p-4 pt-10': canRemoveItem(element.name) },
+      {
+        'border rounded-lg border-gray-200 p-4 pt-10': canRemoveItem(
+          element.name
+        ),
+      },
       { 'bg-gray-50': element.name === 'LogicalUnit' },
       { 'bg-slate-50': element.name === 'Entity' },
       { 'bg-stone-50': element.name === 'Relation' },
-      { 'bg-neutral-50': element.name === 'Property' }
+      { 'bg-neutral-50': element.name === 'Property' },
     ]"
     :style="level > 0 ? { marginLeft: `${level * 4}px` } : undefined"
   >
@@ -17,7 +21,7 @@
         class="mb-2 pb-2 flex justify-between items-center flex-wrap gap-4"
         :class="{
           'border-b border-gray-100': !isEntitiesOrPropertiesOrRelations,
-          '-mt-8': canRemoveItem(element.name)
+          '-mt-8': canRemoveItem(element.name),
         }"
       >
         <div class="flex items-center gap-2">
@@ -47,14 +51,7 @@
       </div>
 
       <div v-show="isExpanded">
-        <ReqElementExtensionField
-          v-if="isReqElementExtension"
-          :element="element"
-          :base-path="currentPath"
-          @update-value="emit('update-value', currentPath, $event)"
-          @add-dynamic-item="(path: string, desiredKey?: string) => emit('add-dynamic-item', path, desiredKey)"
-        />
-        <template v-else-if="element.complexType?.sequence">
+        <template v-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
             :key="String(key)"
@@ -179,7 +176,7 @@
               "
             />
             <BaseFieldInput
-              v-else-if="attr.type"
+              v-else
               :key="`${currentPath}-${attr.name}-input`"
               :value="attr.value"
               :name="attr.name"
@@ -274,10 +271,8 @@ import {
   canRemoveItem,
   isKSIIdentificationField,
   getInputType,
-  isReqElementExtension as isReqElementExtensionUtil,
   isUidFieldName,
 } from "@/utils/xsdUtils";
-import ReqElementExtensionField from "./fields/ReqElementExtensionField.vue";
 import BaseFieldSelect from "./fields/BaseFieldSelect.vue";
 import BaseFieldInput from "./fields/BaseFieldInput.vue";
 import EntityIdFieldSelect from "./fields/EntityIdFieldSelect.vue";
@@ -319,10 +314,6 @@ const mockData: { [key: string]: ComplexTypeInstance[] } = inject(
 const isExpanded = ref(true);
 const selectedComplexTypeId = ref("");
 
-const isReqElementExtension = computed(() => {
-  return isReqElementExtensionUtil(props.element);
-});
-
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
 });
@@ -361,7 +352,7 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     "GraphView",
     "TableView",
     "FormulasView",
-    "ReqElementObjects"
+    "ReqElementObjects",
   ];
 
   return dynamicAddables.includes(props.element.name);

@@ -249,84 +249,39 @@ function processComplexTypeByDefinition(
 ): void {
   if (!complexValue || typeof complexValue !== "object") return;
 
-  if (
-    elementDefinition?.complexType?.complexContent?.extension?.base ===
-    "ReqElement"
-  ) {
-    if (complexValue.attributes) {
-      for (const [attrKey, attrValue] of Object.entries(
-        complexValue.attributes
-      )) {
-        if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
-          parent.att(attrKey, String(attrValue));
-        }
-      }
-    }
+  let hasComplexContent = false;
+  
+  for (const [key, value] of Object.entries(complexValue)) {
+    if (key === "attributes") continue;
 
-    let hasReqElementContent = false;
+    if (value !== undefined && value !== null && value !== "") {
+      hasComplexContent = true;
+      const fieldNode = parent.ele(key);
 
-    for (const [field, fieldValue] of Object.entries(complexValue)) {
-      if (field === "attributes") continue;
-      if (fieldValue === undefined || fieldValue === null || fieldValue === "")
-        continue;
-
-      hasReqElementContent = true;
-      const fieldNode = parent.ele(field);
-
-      if (shouldWrapCdata(fieldValue, elementDefinition?.type)) {
-        fieldNode.cdata(fieldValue);
-      } else if (typeof fieldValue === "object" && !Array.isArray(fieldValue)) {
-        processComplexTypeValue(fieldNode, fieldValue);
+      if (shouldWrapCdata(value, elementDefinition?.type)) {
+        fieldNode.cdata(String(value));
+      } else if (typeof value === "object" && !Array.isArray(value)) {
+        processComplexTypeValue(fieldNode, value);
       } else {
-        fieldNode.txt(String(fieldValue));
+        fieldNode.txt(String(value));
       }
     }
+  }
 
-    const hasAttributeContent =
-      complexValue.attributes &&
-      Object.values(complexValue.attributes).some(
-        (attr: any) => attr !== undefined && attr !== null && attr !== ""
-      );
-
-    // Если нет контента в ReqElement, не создаем его
-    if (!hasReqElementContent && !hasAttributeContent) {
-      return;
-    }
-  } else {
-    let hasComplexContent = false;
-    
-    for (const [key, value] of Object.entries(complexValue)) {
-      if (key === "attributes") continue;
-
-      if (value !== undefined && value !== null && value !== "") {
+  if (complexValue.attributes) {
+    for (const [attrKey, attrValue] of Object.entries(
+      complexValue.attributes
+    )) {
+      if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
         hasComplexContent = true;
-        const fieldNode = parent.ele(key);
-
-        if (shouldWrapCdata(value, elementDefinition?.type)) {
-          fieldNode.cdata(String(value));
-        } else if (typeof value === "object" && !Array.isArray(value)) {
-          processComplexTypeValue(fieldNode, value);
-        } else {
-          fieldNode.txt(String(value));
-        }
+        parent.att(attrKey, String(attrValue));
       }
     }
-
-    if (complexValue.attributes) {
-      for (const [attrKey, attrValue] of Object.entries(
-        complexValue.attributes
-      )) {
-        if (attrValue !== undefined && attrValue !== null && attrValue !== "") {
-          hasComplexContent = true;
-          parent.att(attrKey, String(attrValue));
-        }
-      }
-    }
-    
-    // Если нет контента в complex type, не создаем его
-    if (!hasComplexContent) {
-      return;
-    }
+  }
+  
+  // Если нет контента в complex type, не создаем его
+  if (!hasComplexContent) {
+    return;
   }
 }
 
@@ -450,36 +405,10 @@ function hasContent(element: any): boolean {
       .some((child: any) => hasContent(child));
     if (hasChildContent) return true;
   }
-  
+
   // Для complex type с данными
   if (element.type && isComplexType(element.type) && element.value) {
     return true;
-  }
-  
-  // Для ReqElement extension
-  if (element.complexType?.complexContent?.extension?.base === "ReqElement" && element.value) {
-    const reqValue = element.value;
-    const hasValueDeep = (val: any): boolean => {
-      if (val === undefined || val === null || val === "") return false;
-      if (typeof val === "object" && !Array.isArray(val)) {
-        return Object.values(val).some((nested) => hasValueDeep(nested));
-      }
-      if (Array.isArray(val)) {
-        return val.some((item) => hasValueDeep(item));
-      }
-      return true;
-    };
-
-    const hasReqField = Object.entries(reqValue)
-      .filter(([key]) => key !== "attributes")
-      .some(([, val]) => hasValueDeep(val));
-    
-    const hasAttribute = reqValue.attributes && 
-      Object.values(reqValue.attributes).some((attr: any) => 
-        attr !== undefined && attr !== null && attr !== ""
-      );
-    
-    return hasReqField || hasAttribute;
   }
   
   return false;

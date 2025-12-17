@@ -97,6 +97,8 @@ export function useForm() {
       removeDefaultDMODELElements();
       applyReqElementDefinition(schema.elements);
       applyReqElementDefinition(dynamicTemplates);
+      applyLinkTypeToElements(schema.elements);
+      applyLinkTypeToElements(dynamicTemplates);
       applyConditionTypeToCondFields(schema.elements);
       applyConditionTypeToCondFields(
         schema.propertyStructur?.complexType?.sequence || {}
@@ -359,6 +361,44 @@ export function useForm() {
     } else {
       Object.values(target || {}).forEach((item: any) => walk(item));
     }
+  };
+
+  const applyLinkTypeToElements = (elements: { [key: string]: any }) => {
+    const linkType = schema.complexTypes?.Link;
+    if (!linkType || !elements) return;
+
+    const walk = (element: any) => {
+      if (!element || typeof element !== "object") return;
+
+      if (element.type === "Link") {
+        element.type = undefined;
+        element.simpleType = undefined;
+        element.complexType = deepCopyElement(linkType);
+      }
+
+      if (element.complexType?.sequence) {
+        Object.values(element.complexType.sequence).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        Object.values(
+          element.complexType.complexContent.extension.sequence
+        ).forEach((child: any) => walk(child));
+      }
+      if (element.complexType?.all) {
+        Object.values(element.complexType.all).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (element.complexType?.choice?.elements) {
+        Object.values(element.complexType.choice.elements).forEach(
+          (child: any) => walk(child)
+        );
+      }
+    };
+
+    Object.values(elements).forEach((element: any) => walk(element));
   };
 
   const getPRulesSequence = () =>

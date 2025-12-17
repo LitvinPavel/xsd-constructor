@@ -19,6 +19,8 @@ export const REMOVABLE_ITEMS = [
 export const KSI_IDENTIFICATION_FIELDS = ['EntityID', 'PropertyID'];
 export const ENTITIES_OR_PROPERTIES_OR_RELATIONS = ['Entities', 'Properties', 'Relations', 'LogicalUnits'];
 
+export const READ_ONLY_UIDS = ['DocUId', 'ReqUId', 'LinkReqUid', 'LinkReqElementUid'];
+
 const UID_PREFIX_MAP: Record<string, string> = {
   GraphElement: 'Graph',
   TableElement: 'Table',
@@ -34,7 +36,7 @@ export function canRemoveItem(itemName: string): boolean {
 }
 
 export function isUidFieldName(name?: string): boolean {
-  return typeof name === 'string' && /uid$/i.test(name) && name !== 'DocUId' && name !== 'ReqUId';
+  return typeof name === 'string' && /uid$/i.test(name) && !READ_ONLY_UIDS.includes(name);
 }
 
 export function isKSIIdentificationField(item: any): boolean {

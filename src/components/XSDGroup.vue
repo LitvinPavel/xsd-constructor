@@ -18,16 +18,15 @@
     <div v-if="!element.type && element.complexType?.sequence" class="w-full">
       <div
         v-if="element.annotation?.documentation"
-        class="mb-2 pb-2 flex justify-between items-center flex-wrap gap-4"
+        class="mb-2 pb-2 flex justify-between items-center flex-wrap gap-4 border-b border-gray-100"
         :class="{
-          'border-b border-gray-100': !isEntitiesOrPropertiesOrRelations,
           '-mt-8': canRemoveItem(element.name),
         }"
       >
         <div class="flex items-center gap-2">
           <DxButton
             v-if="
-              Object.keys(element.complexType?.sequence || {}).length > 1 &&
+              Object.keys(element.complexType?.sequence || {}).length &&
               level > 0
             "
             :icon="isExpanded ? 'chevrondown' : 'chevronright'"
@@ -51,6 +50,48 @@
       </div>
 
       <div v-show="isExpanded">
+        <template
+          v-if="
+            element?.complexType?.attributes &&
+            Object.keys(element.complexType.attributes).length
+          "
+        >
+          <div
+            v-for="(attr, key) in element.complexType.attributes"
+            :key="key"
+            class="mb-2"
+          >
+            <BaseFieldSelect
+              v-if="attr.simpleType?.restriction?.enumerations"
+              :key="`${currentPath}-${attr.name}-select`"
+              v-model="attr.value"
+              :options="attr.simpleType.restriction.enumerations"
+              :name="attr.name"
+              :label="attr.annotation.documentation"
+              option-key="value"
+              label-key="value"
+              :disabled="
+                isUidFieldName(attr.name) ||
+                isPRuleFieldDisabled(attr, currentPath, attr.name)
+              "
+            />
+            <BaseFieldInput
+              v-else
+              :key="`${currentPath}-${attr.name}-input`"
+              :value="attr.value"
+              :name="attr.name"
+              :label="attr.annotation.documentation"
+              :type="getInputType(attr.type)"
+              :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
+              :disabled="
+                isUidFieldName(attr.name) ||
+                isPRuleFieldDisabled(attr, currentPath, attr.name)
+              "
+              @input="($event) => (attr.value = $event)"
+            />
+          </div>
+        </template>
+
         <template v-if="element.complexType?.sequence">
           <div
             v-for="(item, key) in element.complexType.sequence"
@@ -76,7 +117,22 @@
               />
             </div>
 
+            <BaseFieldSelect
+              v-if="isLinkSelectField(element, item)"
+              v-model="item.value"
+              :name="item.name"
+              :label="item.annotation?.documentation"
+              :options="getLinkSelectOptions(item.name)"
+              option-key="value"
+              label-key="value"
+              :key="`${getItemPath(String(key))}-${item.name}-link-select`"
+              @update:modelValue="
+                (val: string | undefined) => emit('update-value', getItemPath(String(key)), val)
+              "
+            />
+
             <XSDGroup
+              v-else
               :element="item"
               :level="level + 1"
               :parent-path="getItemPath(String(key))"
@@ -146,48 +202,6 @@
               @add-logical-unit="emit('add-logical-unit', $event)"
               @add-dynamic-item="handleChildAddDynamic"
               @add-condition="handleChildAddCondition"
-            />
-          </div>
-        </template>
-
-        <template
-          v-if="
-            element?.complexType?.attributes &&
-            Object.keys(element.complexType.attributes).length
-          "
-        >
-          <div
-            v-for="(attr, key) in element.complexType.attributes"
-            :key="key"
-            class="mb-2"
-          >
-            <BaseFieldSelect
-              v-if="attr.simpleType?.restriction?.enumerations"
-              :key="`${currentPath}-${attr.name}-select`"
-              v-model="attr.value"
-              :options="attr.simpleType.restriction.enumerations"
-              :name="attr.name"
-              :label="attr.annotation.documentation"
-              option-key="value"
-              label-key="value"
-              :disabled="
-                isUidFieldName(attr.name) ||
-                isPRuleFieldDisabled(attr, currentPath, attr.name)
-              "
-            />
-            <BaseFieldInput
-              v-else
-              :key="`${currentPath}-${attr.name}-input`"
-              :value="attr.value"
-              :name="attr.name"
-              :label="attr.annotation.documentation"
-              :type="getInputType(attr.type)"
-              :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
-              :disabled="
-                isUidFieldName(attr.name) ||
-                isPRuleFieldDisabled(attr, currentPath, attr.name)
-              "
-              @input="($event) => (attr.value = $event)"
             />
           </div>
         </template>
@@ -306,10 +320,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const schema: Partial<XSDSchema> = inject("schema", {});
-const mockData: { [key: string]: ComplexTypeInstance[] } = inject(
-  "mockData",
-  {}
-);
+const mockData: Record<string, any[]> = inject("mockData", {});
 
 const isExpanded = ref(true);
 const selectedComplexTypeId = ref("");
@@ -357,6 +368,31 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
 
   return dynamicAddables.includes(props.element.name);
 });
+
+const LINK_SELECT_FIELDS = ["NameOfSourceDocument", "LinkReqUid"];
+
+const isLinkElement = (element: any) => {
+  return !!element?.complexType?.attributes?.LinkType;
+};
+
+const isInternalLink = (element: any) => {
+  const linkType = element?.complexType?.attributes?.LinkType?.value;
+  return isLinkElement(element) && linkType === "внутренняя";
+};
+
+const isLinkSelectField = (parent: any, child: any) => {
+  return isInternalLink(parent) && LINK_SELECT_FIELDS.includes(child?.name);
+};
+
+const getLinkSelectOptions = (fieldName: string) => {
+  if (fieldName === "NameOfSourceDocument") {
+    return mockData.LinkNameOfSourceDocument || [];
+  }
+  if (fieldName === "LinkReqUid") {
+    return mockData.LinkReqUid || [];
+  }
+  return [];
+};
 
 const isPRuleContext = (path: string) => {
   const segments = path.split(".");

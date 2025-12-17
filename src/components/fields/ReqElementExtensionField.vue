@@ -21,24 +21,22 @@
       @input="onReqElementAttrChange('ReqElementUid', $event)"
     />
 
-    <BaseFieldInput
-      v-for="field in schema?.complexTypes?.ReqElement?.sequence"
-      :key="field.name"
-      :value="getReqElementFieldValue(field.name)"
-      :type="getInputType(field.type)"
-      :label="field.annotation?.documentation || field.name"
-      :name="field.name"
-      :field-type="field.name === 'ReqElementData' ? 'textarea' : 'input'"
-      @input="onReqElementFieldChange(field.name, $event)"
+    <XSDGroup
+      v-if="reqElementGroup"
+      :element="reqElementGroup"
+      :level="1"
+      parent-path="ReqElement"
+      @update-value="handleReqElementUpdate"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { inject } from "vue";
+import { computed, inject } from "vue";
 import type { XSDSchema } from "@/types";
-import { getInputType, decodeHTMLEntities, isUidFieldName } from "@/utils/xsdUtils";
+import { isUidFieldName, deepCopyElement } from "@/utils/xsdUtils";
 import BaseFieldInput from "@/components/fields/BaseFieldInput.vue";
+import XSDGroup from "@/components/XSDGroup.vue";
 
 interface Props {
   element: any;
@@ -52,10 +50,69 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 const schema: Partial<XSDSchema> = inject("schema", {});
 
-const getReqElementFieldValue = (fieldName: string): any => {
-  if (!props.element.value || typeof props.element.value !== "object")
-    return "";
-  return props.element.value[fieldName] || "";
+const reqElementGroup = computed(() => {
+  const definition = schema?.complexTypes?.ReqElement;
+  if (!definition?.sequence) return null;
+
+  const sequence = deepCopyElement(definition.sequence);
+  const applyValues = (seq: any, values: any) => {
+    if (!seq) return;
+
+    Object.values(seq).forEach((child: any) => {
+      const childValue = values ? values[child.name] : undefined;
+      if (child.complexType?.sequence && typeof childValue === "object") {
+        child.value = childValue;
+        applyValues(child.complexType.sequence, childValue);
+      } else {
+        child.value =
+          childValue !== undefined && childValue !== null ? childValue : "";
+      }
+    });
+  };
+
+  applyValues(sequence, props.element.value);
+
+  return {
+    name: "ReqElement",
+    annotation: definition.annotation,
+    complexType: { sequence },
+  };
+});
+
+const updateNestedValue = (source: any, path: string, value: any) => {
+  const segments = path ? path.split(".") : [];
+  if (!segments.length) return value;
+
+  const updatedRoot = { ...(source || {}) };
+  let cursor: any = updatedRoot;
+
+  segments.forEach((segment, index) => {
+    if (index === segments.length - 1) {
+      cursor[segment] = value;
+      return;
+    }
+
+    const nextValue = cursor[segment];
+    cursor[segment] =
+      nextValue && typeof nextValue === "object" ? { ...nextValue } : {};
+    cursor = cursor[segment];
+  });
+
+  return updatedRoot;
+};
+
+const handleReqElementUpdate = (path: string, value: any) => {
+  const normalizedPath = path.startsWith("ReqElement.")
+    ? path.slice("ReqElement.".length)
+    : path;
+
+  const updatedValue = updateNestedValue(
+    props.element.value || {},
+    normalizedPath,
+    value
+  );
+
+  emit("update-value", updatedValue);
 };
 
 const onReqElementAttrChange = (
@@ -74,16 +131,4 @@ const onReqElementAttrChange = (
   emit("update-value", updatedValue);
 };
 
-const onReqElementFieldChange = (
-  fieldName: string,
-  value: string | number | boolean
-) => {
-  const currentValue = props.element.value || {};
-  const updatedValue = {
-    ...currentValue,
-    [fieldName]: typeof value === "string" ? decodeHTMLEntities(value) : value,
-  };
-
-  emit("update-value", updatedValue);
-};
 </script>

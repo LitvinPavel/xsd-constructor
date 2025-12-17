@@ -72,6 +72,21 @@ const formatValueByType = (value: unknown, type?: string): string | null => {
   return String(value);
 };
 
+const shouldWrapCdata = (value: unknown, type?: string): boolean => {
+  if (value === undefined || value === null) return false;
+  if (typeof value !== "string") return false;
+
+  const trimmed = value.trim();
+  if (!trimmed.includes("<") || !trimmed.includes(">")) return false;
+
+  const normalizedType = type?.toLowerCase?.() || "";
+  if (normalizedType === "xs:string" || normalizedType === "string" || !type) {
+    return true;
+  }
+
+  return false;
+};
+
 export function generateXMLWithValidation(schema: XSDSchema): string {
   if (!schema?.elements || Object.keys(schema.elements).length === 0) {
     throw new Error("Invalid schema: no elements found");
@@ -144,7 +159,10 @@ function processElementWithValidation(parent: any, element: any): void {
   ) {
     const formattedValue = formatValueByType(element.value, element.type);
     if (formattedValue !== null) {
-      currentNode.txt(formattedValue);
+      if (shouldWrapCdata(formattedValue, element.type)) {
+        currentNode.cdata(formattedValue);
+      } else currentNode.txt(formattedValue);
+      
     }
   }
 
@@ -245,51 +263,33 @@ function processComplexTypeByDefinition(
       }
     }
 
-    const reqElementFields = [
-      "ReqElementData",
-      "ReqElementNumber",
-      "ReqElementName",
-      "ReqElementLink",
-      "ReqElementNotes",
-    ];
-
     let hasReqElementContent = false;
-    
-    for (const field of reqElementFields) {
-      const fieldValue = complexValue[field];
-      if (
-        fieldValue !== undefined &&
-        fieldValue !== null &&
-        fieldValue !== ""
-      ) {
-        hasReqElementContent = true;
-        const fieldNode = parent.ele(field);
 
-        if (
-          field === "ReqElementData" &&
-          (complexValue.attributes?.ReqElementType ===
-            "графическое изображение" ||
-            complexValue.attributes?.ReqElementType === "формульная запись")
-        ) {
-          if (fieldValue.includes("<") && fieldValue.includes(">")) {
-            fieldNode.cdata(fieldValue);
-          } else {
-            fieldNode.txt(fieldValue);
-          }
-        } else {
-          fieldNode.txt(fieldValue);
-        }
+    for (const [field, fieldValue] of Object.entries(complexValue)) {
+      if (field === "attributes") continue;
+      if (fieldValue === undefined || fieldValue === null || fieldValue === "")
+        continue;
+
+      hasReqElementContent = true;
+      const fieldNode = parent.ele(field);
+
+      if (shouldWrapCdata(fieldValue, elementDefinition?.type)) {
+        fieldNode.cdata(fieldValue);
+      } else if (typeof fieldValue === "object" && !Array.isArray(fieldValue)) {
+        processComplexTypeValue(fieldNode, fieldValue);
+      } else {
+        fieldNode.txt(String(fieldValue));
       }
     }
-    
+
+    const hasAttributeContent =
+      complexValue.attributes &&
+      Object.values(complexValue.attributes).some(
+        (attr: any) => attr !== undefined && attr !== null && attr !== ""
+      );
+
     // Если нет контента в ReqElement, не создаем его
-    if (!hasReqElementContent && 
-        (!complexValue.attributes || 
-         Object.keys(complexValue.attributes).length === 0 ||
-         !Object.values(complexValue.attributes).some((attr: any) => 
-           attr !== undefined && attr !== null && attr !== ""
-         ))
-    ) {
+    if (!hasReqElementContent && !hasAttributeContent) {
       return;
     }
   } else {
@@ -302,7 +302,9 @@ function processComplexTypeByDefinition(
         hasComplexContent = true;
         const fieldNode = parent.ele(key);
 
-        if (typeof value === "object" && !Array.isArray(value)) {
+        if (shouldWrapCdata(value, elementDefinition?.type)) {
+          fieldNode.cdata(String(value));
+        } else if (typeof value === "object" && !Array.isArray(value)) {
           processComplexTypeValue(fieldNode, value);
         } else {
           fieldNode.txt(String(value));
@@ -342,6 +344,8 @@ function processComplexTypeValue(parent: any, complexValue: any): void {
 
       if (typeof value === "object" && !Array.isArray(value)) {
         processComplexTypeValue(fieldNode, value);
+      } else if (shouldWrapCdata(value)) {
+        fieldNode.cdata(String(value));
       } else {
         fieldNode.txt(String(value));
       }
@@ -394,7 +398,7 @@ function isComplexType(typeName?: string): boolean {
 function hasContent(element: any): boolean {
   if (!element) return false;
   if (element.skipInXml) return false;
-  
+
   // Проверяем простое значение
   if (element.value !== undefined && 
       element.value !== null && 
@@ -455,20 +459,20 @@ function hasContent(element: any): boolean {
   // Для ReqElement extension
   if (element.complexType?.complexContent?.extension?.base === "ReqElement" && element.value) {
     const reqValue = element.value;
-    // Проверяем поля ReqElement
-    const reqElementFields = [
-      "ReqElementData",
-      "ReqElementNumber",
-      "ReqElementName",
-      "ReqElementLink",
-      "ReqElementNotes"
-    ];
-    
-    const hasReqField = reqElementFields.some(field => 
-      reqValue[field] !== undefined && 
-      reqValue[field] !== null && 
-      reqValue[field] !== ""
-    );
+    const hasValueDeep = (val: any): boolean => {
+      if (val === undefined || val === null || val === "") return false;
+      if (typeof val === "object" && !Array.isArray(val)) {
+        return Object.values(val).some((nested) => hasValueDeep(nested));
+      }
+      if (Array.isArray(val)) {
+        return val.some((item) => hasValueDeep(item));
+      }
+      return true;
+    };
+
+    const hasReqField = Object.entries(reqValue)
+      .filter(([key]) => key !== "attributes")
+      .some(([, val]) => hasValueDeep(val));
     
     const hasAttribute = reqValue.attributes && 
       Object.values(reqValue.attributes).some((attr: any) => 

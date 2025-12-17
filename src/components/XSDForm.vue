@@ -38,6 +38,7 @@
             @add-relation="handleAddRelation"
             @add-logical-unit="handleAddLogicalUnit"
             @add-dynamic-item="handleAddDynamicItem"
+            @copy-dynamic-item="handleCopyDynamicItem"
             @add-condition="handleAddConditionElement"
           />
         </div>
@@ -95,6 +96,7 @@ const {
   handleAddRelation,
   handleAddLogicalUnit,
   handleAddDynamicItem,
+  handleCopyDynamicItem,
   handleAddConditionElement
 } = useForm();
 

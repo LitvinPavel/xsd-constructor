@@ -118,6 +118,7 @@ export function useForm() {
       "Property",
       "Relation",
       "LogicalUnit",
+      "ReqElementObject",
       "PropertyCond",
       "RelationCond",
       "KeyWord",
@@ -633,7 +634,10 @@ export function useForm() {
     }
   };
 
-  const handleAddDynamicItem = async (elementPath: string) => {
+  const handleAddDynamicItem = async (
+    elementPath: string,
+    desiredKey?: string
+  ) => {
     await nextTick();
     const targetElement = elementPathMap.get(elementPath);
     if (!targetElement) return;
@@ -652,13 +656,15 @@ export function useForm() {
       FormulasView: "FormulaElement",
       PropertyCond: "Condition",
       RelationCond: "Condition",
+      ReqElementObjects: "ReqElementObject",
     };
 
     const sequence = targetElement.complexType?.sequence;
     let template: any = null;
     let templateName = "";
 
-    const desiredKey =
+    const mapKey =
+      desiredKey ||
       containerToTemplateMap[targetElement.name] ||
       containerToTemplateMap[
         typeof targetElement.name === "string"
@@ -666,9 +672,12 @@ export function useForm() {
           : ""
       ];
 
-    if (desiredKey && dynamicTemplates[desiredKey]) {
-      template = deepCopyElement(dynamicTemplates[desiredKey]);
+    if (desiredKey && sequence?.[desiredKey]) {
+      template = deepCopyElement(sequence[desiredKey]);
       templateName = template?.name || desiredKey;
+    } else if (mapKey && dynamicTemplates[mapKey]) {
+      template = deepCopyElement(dynamicTemplates[mapKey]);
+      templateName = template?.name || mapKey;
     } else if (dynamicTemplates[targetElement.name]) {
       template = deepCopyElement(dynamicTemplates[targetElement.name]);
       templateName = template?.name || targetElement.name;
@@ -680,7 +689,7 @@ export function useForm() {
 
     if (!template || !templateName) return;
 
-    const newKey = `${templateName}_${Date.now()}`;
+    const newKey = desiredKey || `${templateName}_${Date.now()}`;
     const newItem = reactive(template);
 
     if ("value" in newItem) {
@@ -700,6 +709,26 @@ export function useForm() {
     });
 
     initializeElementValues({ [newKey]: newItem }, elementPath);
+  };
+
+  const handleCopyDynamicItem = async (
+    elementPath: string,
+    sourceKey: string
+  ) => {
+    await nextTick();
+    const targetElement = elementPathMap.get(elementPath);
+    if (!targetElement?.complexType?.sequence?.[sourceKey]) return;
+
+    const source = targetElement.complexType.sequence[sourceKey];
+    const newKey = `${source.name || sourceKey}_${Date.now()}`;
+    const copied = reactive(deepCopyElement(source));
+
+    targetElement.complexType.sequence = reactive({
+      ...targetElement.complexType.sequence,
+      [newKey]: copied,
+    });
+
+    initializeElementValues({ [newKey]: copied }, elementPath);
   };
 
   const handleAddConditionElement = async (
@@ -857,6 +886,7 @@ export function useForm() {
     handleAddRelation,
     handleAddLogicalUnit,
     handleAddDynamicItem,
+    handleCopyDynamicItem,
     handleAddConditionElement,
   };
 }

@@ -50,7 +50,9 @@
         <ReqElementExtensionField
           v-if="isReqElementExtension"
           :element="element"
+          :base-path="currentPath"
           @update-value="emit('update-value', currentPath, $event)"
+          @add-dynamic-item="(path: string, desiredKey?: string) => emit('add-dynamic-item', path, desiredKey)"
         />
         <template v-else-if="element.complexType?.sequence">
           <div
@@ -60,8 +62,14 @@
           >
             <div
               v-if="canRemoveItem(item.name)"
-              class="absolute right-0 top-0"
+              class="absolute right-0 top-0 flex gap-1"
             >
+              <DxButton
+                @click="handleCopyItem(String(key))"
+                icon="copy"
+                type="default"
+                styling-mode="text"
+              />
               <DxButton
                 @click="removeItem(String(key))"
                 icon="close"
@@ -86,6 +94,7 @@
               @add-relation="handleChildAddRelation"
               @add-logical-unit="emit('add-logical-unit', $event)"
               @add-dynamic-item="handleChildAddDynamic"
+              @copy-dynamic-item="(path: string, itemKey: string) => emit('copy-dynamic-item', path, itemKey)"
               @add-condition="handleChildAddCondition"
             />
           </div>
@@ -289,7 +298,8 @@ interface Emits {
   (e: "add-property", path: string): void;
   (e: "add-relation", path: string): void;
   (e: "add-logical-unit", path: string): void;
-  (e: "add-dynamic-item", path: string): void;
+  (e: "add-dynamic-item", path: string, desiredKey?: string): void;
+  (e: "copy-dynamic-item", path: string, key: string): void;
   (
     e: "add-condition",
     path: string,
@@ -351,6 +361,7 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     "GraphView",
     "TableView",
     "FormulasView",
+    "ReqElementObjects"
   ];
 
   return dynamicAddables.includes(props.element.name);
@@ -441,9 +452,9 @@ const handleAddRelation = async () => {
   emit("add-relation", currentPath.value);
 };
 
-const handleAddDynamic = async () => {
+const handleAddDynamic = async (path?: string, desiredKey?: string) => {
   await nextTick();
-  emit("add-dynamic-item", currentPath.value);
+  emit("add-dynamic-item", path || currentPath.value, desiredKey);
 };
 
 const handleAddCondition = (condName: "PropertyCond" | "RelationCond") => {
@@ -462,8 +473,12 @@ const handleChildAddRelation = (path: string) => {
   emit("add-relation", path);
 };
 
-const handleChildAddDynamic = (path: string) => {
-  emit("add-dynamic-item", path);
+const handleChildAddDynamic = (path: string, desiredKey?: string) => {
+  emit("add-dynamic-item", path, desiredKey);
+};
+
+const handleCopyItem = (key: string) => {
+  emit("copy-dynamic-item", currentPath.value, key);
 };
 
 const handleChildAddCondition = (

@@ -1,6 +1,6 @@
 <template>
   <div class="p-2 my-1">
-    <BaseFieldInput
+    <!-- <BaseFieldInput
       v-for="(field, key) in schema?.complexTypes?.ReqElement?.attributes"
       :key="key"
       :value="element.value.attributes[key]"
@@ -8,7 +8,7 @@
       :name="field.name"
       :disabled="true"
       @input="onReqElementAttrChange('ReqElementType', $event)"
-    />
+    /> -->
 
     <BaseFieldInput
       v-for="(field, key) in element.complexType.complexContent.extension
@@ -25,8 +25,10 @@
       v-if="reqElementGroup"
       :element="reqElementGroup"
       :level="1"
-      parent-path="ReqElement"
+      :parent-path="basePath || 'ReqElement'"
       @update-value="handleReqElementUpdate"
+      @add-dynamic-item="(...args) => emit('add-dynamic-item', ...args)"
+      @copy-dynamic-item="(path: string, key: string) => emit('copy-dynamic-item', path, key)"
     />
   </div>
 </template>
@@ -40,10 +42,13 @@ import XSDGroup from "@/components/XSDGroup.vue";
 
 interface Props {
   element: any;
+  basePath?: string;
 }
 
 interface Emits {
   (e: "update-value", value: any): void;
+  (e: "add-dynamic-item", path: string, desiredKey?: string): void;
+  (e: "copy-dynamic-item", path: string, key: string): void;
 }
 
 const props = defineProps<Props>();
@@ -60,9 +65,10 @@ const reqElementGroup = computed(() => {
 
     Object.values(seq).forEach((child: any) => {
       const childValue = values ? values[child.name] : undefined;
-      if (child.complexType?.sequence && typeof childValue === "object") {
-        child.value = childValue;
-        applyValues(child.complexType.sequence, childValue);
+      if (child.complexType?.sequence) {
+        child.value =
+          childValue && typeof childValue === "object" ? childValue : {};
+        applyValues(child.complexType.sequence, child.value);
       } else {
         child.value =
           childValue !== undefined && childValue !== null ? childValue : "";
@@ -102,8 +108,10 @@ const updateNestedValue = (source: any, path: string, value: any) => {
 };
 
 const handleReqElementUpdate = (path: string, value: any) => {
-  const normalizedPath = path.startsWith("ReqElement.")
-    ? path.slice("ReqElement.".length)
+  const base = props.basePath || "ReqElement";
+  const prefix = `${base}.`;
+  const normalizedPath = path.startsWith(prefix)
+    ? path.slice(prefix.length)
     : path;
 
   const updatedValue = updateNestedValue(

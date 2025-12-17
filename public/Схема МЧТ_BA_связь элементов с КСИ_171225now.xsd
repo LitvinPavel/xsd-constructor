@@ -176,6 +176,34 @@
 					<xs:documentation>Примечания к элементу требования</xs:documentation>
 				</xs:annotation>
 			</xs:element>
+			<xs:element name="ReqElementObjects">
+				<xs:annotation>
+					<xs:documentation>Связанные объекты</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="ReqElementObject" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Связанный объект</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="ReqElementObjectName" type="xs:string">
+										<xs:annotation>
+											<xs:documentation>Наименование связанного объекта</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="ReqElementObjectID" type="KSIIdentification" minOccurs="0">
+										<xs:annotation>
+											<xs:documentation>ID свойства</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
 		</xs:sequence>
 		<xs:attribute name="ReqElementType" use="required">
 			<!-- NtdElementAdditional.Type -->

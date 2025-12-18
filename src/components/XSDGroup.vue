@@ -50,6 +50,19 @@
       </div>
 
       <div v-show="isExpanded">
+        <div
+          v-if="relationSummaryLines.length"
+          class="mb-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700"
+        >
+          <div
+            v-for="(line, idx) in relationSummaryLines"
+            :key="`${currentPath}-relation-summary-${idx}`"
+            class="leading-relaxed"
+          >
+            {{ line }}
+          </div>
+        </div>
+
         <template
           v-if="
             element?.complexType?.attributes &&
@@ -288,6 +301,7 @@ import {
   isKSIIdentificationField,
   getInputType,
   isUidFieldName,
+  getNestedValue,
 } from "@/utils/xsdUtils";
 import BaseFieldSelect from "./fields/BaseFieldSelect.vue";
 import BaseFieldInput from "./fields/BaseFieldInput.vue";
@@ -329,6 +343,125 @@ const selectedComplexTypeId = ref("");
 
 const currentPath = computed(() => {
   return props.parentPath || props.element.name;
+});
+
+const logicalUnitPath = computed(() => {
+  const parts = currentPath.value.split(".");
+  const luIndex = parts.findIndex((part: string) => part.startsWith("LogicalUnit_"));
+  if (luIndex === -1) return null;
+  return parts.slice(0, luIndex + 1).join(".");
+});
+
+const entityNameByUid = computed(() => {
+  if (!logicalUnitPath.value) return {};
+
+  const items = getNestedValue(
+    schema,
+    `elements.${logicalUnitPath.value}.complexType.sequence.Entities.complexType.sequence`
+  ) as Record<string, XSDElement> | undefined;
+
+  if (!items || typeof items !== "object") {
+    return {};
+  }
+
+  const map: Record<string, string> = {};
+  Object.values(items).forEach((item: any) => {
+    const uid = item?.complexType?.sequence?.EntityUid?.value;
+    const name = item?.complexType?.sequence?.EntityName?.value;
+    if (uid) {
+      map[String(uid)] = String(name || uid);
+    }
+  });
+
+  return map;
+});
+
+const relationSummaryLines = computed(() => {
+  if (props.element?.name !== "Relation") return [];
+
+  const relation = props.element;
+  const relationAttrs = relation?.complexType?.attributes;
+  const relationType = relationAttrs?.TypeOfRelation?.value;
+
+  const headUid = relation?.complexType?.sequence?.HeadObjectId?.value;
+  const tailUid = relation?.complexType?.sequence?.TailObjectId?.value;
+  const headName =
+    (headUid && entityNameByUid.value[String(headUid)]) ||
+    (headUid ? String(headUid) : "");
+  const tailName =
+    (tailUid && entityNameByUid.value[String(tailUid)]) ||
+    (tailUid ? String(tailUid) : "");
+
+  const basePrefix = [headName, tailName].filter(Boolean).join(" → ");
+  const base = relationType
+    ? basePrefix
+      ? `${basePrefix}: ${relationType}`
+      : String(relationType)
+    : basePrefix
+    ? `${basePrefix}:`
+    : "";
+
+  const sequence = relation?.complexType?.sequence || {};
+  const condItems = Object.values(sequence).filter(
+    (item: any) => item?.name === "RelationCond"
+  );
+
+  const buildConditionSuffix = (cond: any) => {
+    const choice = cond?.complexType?.choice;
+    const choiceElements = choice?.elements || {};
+    const selectedKey =
+      choice?.selectedKey || Object.keys(choiceElements || {})[0];
+    if (!selectedKey || !choiceElements[selectedKey]) return "";
+
+    const selected = choiceElements[selectedKey];
+    if (selectedKey === "ValueFromListCondition") {
+      const valueNode = selected?.complexType?.sequence?.ValueFromList;
+      const rawValue = valueNode?.value;
+      const values = Array.isArray(rawValue)
+        ? rawValue.filter(Boolean).map(String)
+        : rawValue
+        ? [String(rawValue)]
+        : [];
+      return values.length ? `, ${values.join(", ")}` : "";
+    }
+
+    if (selectedKey === "ComputableCondition") {
+      const expr = selected?.complexType?.sequence?.ConditionExpression?.value;
+      const units = selected?.complexType?.sequence?.UnitsOfMeasurement?.value;
+      let text = expr ? ` = ${expr}` : "";
+      if (units) {
+        text += `${text ? ", " : " "}единицы измерения: ${units}`;
+      }
+      return text;
+    }
+
+    if (
+      selectedKey === "EqualityCondition" ||
+      selectedKey === "ComparisonCondition"
+    ) {
+      const typeOfCondition =
+        selected?.complexType?.attributes?.TypeOfCondition?.value;
+      const value = selected?.complexType?.sequence?.Value?.value;
+      const units = selected?.complexType?.sequence?.UnitsOfMeasurement?.value;
+      const parts = [typeOfCondition, value, units]
+        .filter((part) => part !== undefined && part !== null && part !== "")
+        .map(String);
+      return parts.length ? ` ${parts.join(" ")}` : "";
+    }
+
+    return "";
+  };
+
+  if (!condItems.length) {
+    return base ? [base] : [];
+  }
+
+  return condItems
+    .map((cond: any) => {
+      const suffix = buildConditionSuffix(cond);
+      return base ? `${base}${suffix}` : suffix.trim();
+    })
+    .filter((line: string) => line);
 });
 
 const hasComplexTypeValue = computed(() => {

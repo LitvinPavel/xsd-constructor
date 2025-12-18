@@ -777,6 +777,7 @@ export function useForm() {
       AuthorizedBy: "Developer",
       ObjectsOfStandartization: "ObjectOfStandartization",
       SecurityAspects: "SecurityAspect",
+      ReqObject: "ObjectOfReq",
       ObjectsOfReq: "ObjectOfReq",
       ReqLinks: "ReqLink",
       NeedDataLinks: "NeedDataLink",

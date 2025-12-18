@@ -72,6 +72,7 @@
               label-key="value"
               :disabled="
                 isUidFieldName(attr.name) ||
+                attr.name === 'ReqElementType' ||
                 isPRuleFieldDisabled(attr, currentPath, attr.name)
               "
             />
@@ -85,6 +86,7 @@
               :pattern="attr.pattern || attr.simpleType?.restriction?.pattern"
               :disabled="
                 isUidFieldName(attr.name) ||
+                attr.name === 'ReqElementType' ||
                 isPRuleFieldDisabled(attr, currentPath, attr.name)
               "
               @input="($event) => (attr.value = $event)"
@@ -358,6 +360,7 @@ const isEntitiesOrPropertiesOrRelations = computed(() => {
     "ObjectsOfStandartization",
     "SecurityAspects",
     "ObjectsOfReq",
+    "ReqObject",
     "ReqLinks",
     "NeedDataLinks",
     "GraphView",

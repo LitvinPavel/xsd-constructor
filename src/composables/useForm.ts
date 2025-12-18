@@ -852,6 +852,7 @@ export function useForm() {
     const source = targetElement.complexType.sequence[sourceKey];
     const newKey = `${source.name || sourceKey}_${Date.now()}`;
     const copied = reactive(deepCopyElement(source));
+    regenerateUids(copied, source.name || sourceKey);
 
     targetElement.complexType.sequence = reactive({
       ...targetElement.complexType.sequence,
@@ -988,6 +989,55 @@ export function useForm() {
       Object.values(
         element.complexType.complexContent.extension.sequence
       ).forEach((child: any) => generateUniqueIds(child, itemType));
+    }
+  };
+
+  const regenerateUids = (element: any, itemType: string) => {
+    if (!element || typeof element !== "object") return;
+
+    if (isUidFieldName(element.name)) {
+      element.value = generateUid(
+        element.name || itemType,
+        element.simpleType?.restriction?.pattern
+      );
+    }
+
+    if (element.complexType?.attributes) {
+      Object.values(element.complexType.attributes).forEach((attr: any) => {
+        if (isUidFieldName(attr.name)) {
+          const baseName =
+            attr.name === "ReqElementUId" ||
+            attr.name === "ReqElementUid" ||
+            attr.name === "ReqElementUID"
+              ? itemType
+              : attr.name || itemType;
+          attr.value = generateUid(
+            baseName,
+            attr.simpleType?.restriction?.pattern
+          );
+        }
+      });
+    }
+
+    if (element.complexType?.sequence) {
+      Object.values(element.complexType.sequence).forEach((child: any) =>
+        regenerateUids(child, itemType)
+      );
+    }
+    if (element.complexType?.all) {
+      Object.values(element.complexType.all).forEach((child: any) =>
+        regenerateUids(child, itemType)
+      );
+    }
+    if (element.complexType?.choice?.elements) {
+      Object.values(element.complexType.choice.elements).forEach((child: any) =>
+        regenerateUids(child, itemType)
+      );
+    }
+    if (element.complexType?.complexContent?.extension?.sequence) {
+      Object.values(
+        element.complexType.complexContent.extension.sequence
+      ).forEach((child: any) => regenerateUids(child, itemType));
     }
   };
 

@@ -64,6 +64,8 @@ const onToggleInputMode = (e: ValueChangedEvent) => {
 
   if (!isManualInput.value) {
     calculateValue();
+  } else {
+    emit("update-value", props.element.value);
   }
 };
 

@@ -409,10 +409,10 @@ export function useForm() {
 
   const collectPRuleLogicalUnitValues = (elements: {
     [key: string]: any;
-  }): string[] => {
-    const result: string[] = [];
+  }): { logicalUnitId: string; value: string }[] => {
+    const result: { logicalUnitId: string; value: string }[] = [];
 
-    Object.values(elements || {}).forEach((element: any) => {
+    Object.entries(elements || {}).forEach(([key, element]: [string, any]) => {
       if (element?.name === "LogicalUnit") {
         const prule = element.complexType?.sequence?.PRuleLogicalUnit;
         if (
@@ -421,7 +421,8 @@ export function useForm() {
           prule.value !== null &&
           prule.value !== ""
         ) {
-          result.push(String(prule.value));
+          const logicalUnitId = key.match(/LogicalUnit_\d+/)?.[0] || key;
+          result.push({ logicalUnitId, value: String(prule.value) });
         }
       }
 
@@ -454,9 +455,7 @@ export function useForm() {
     const prulesSequence = getPRulesSequence();
     if (!prulesSequence || typeof prulesSequence !== "object") return;
 
-    const entries = collectPRuleLogicalUnitValues(schema.elements).map((val) =>
-      String(val)
-    );
+    const entries = collectPRuleLogicalUnitValues(schema.elements);
 
     const template =
       pruleTemplate.value ||
@@ -465,7 +464,7 @@ export function useForm() {
     if (!template) return;
 
     const nextSequence: Record<string, any> = {};
-    entries.forEach((value, idx) => {
+    entries.forEach(({ logicalUnitId, value }, idx) => {
       const key = generateUid("PRule_");
       const prule = deepCopyElement(template);
 
@@ -473,6 +472,13 @@ export function useForm() {
         prule.complexType.sequence.PRuleData.value = value;
       } else {
         prule.value = value;
+      }
+
+      if (prule.complexType?.sequence?.PRuleType) {
+        const isManual = !!schema.pRuleManualInputs?.[logicalUnitId];
+        prule.complexType.sequence.PRuleType.value = isManual
+          ? "ручной"
+          : "автоматический";
       }
 
       if (prule.complexType?.attributes?.PRuleID) {
@@ -484,6 +490,92 @@ export function useForm() {
 
     Object.keys(prulesSequence).forEach((key) => delete prulesSequence[key]);
     Object.assign(prulesSequence, nextSequence);
+  };
+
+  const buildPRuleLogicalUnitValue = (
+    pRuleLogicalUnitMap?: Record<string, string>
+  ): string | null => {
+    if (!pRuleLogicalUnitMap) return null;
+
+    const beforeThen: string[] = [];
+    const afterThen: string[] = [];
+
+    Object.keys(pRuleLogicalUnitMap).forEach((key) => {
+      if (pRuleLogicalUnitMap[key] === "посылка") {
+        beforeThen.push(key);
+      } else if (pRuleLogicalUnitMap[key] === "следствие") {
+        afterThen.push(key);
+      }
+    });
+
+    if (beforeThen.length && !afterThen.length) {
+      return `${beforeThen.map((key) => `(${key})`).join(" AND ")}`;
+    }
+
+    if (beforeThen.length && afterThen.length) {
+      return `IF ${beforeThen
+        .map((key) => `(${key})`)
+        .join(" AND ")} THEN ${afterThen
+        .map((key) => `(${key})`)
+        .join(" AND ")}`;
+    }
+
+    return null;
+  };
+
+  const extractPRuleLogicalUnitEntries = (element: any) => {
+    const result: Record<string, string> = {};
+
+    const walk = (item: any) => {
+      if (!item || typeof item !== "object") return;
+
+      if (item.name === "Relation") {
+        const uid = item?.complexType?.sequence?.RelationUid?.value;
+        const role = item?.complexType?.sequence?.RelationRole?.value;
+        if (uid && role) {
+          result[uid] = role;
+        }
+      }
+
+      if (item.name === "PropertyCond" || item.name === "RelationCond") {
+        const uid = item?.complexType?.sequence?.ConditionUid?.value;
+        const role = item?.complexType?.sequence?.ConditionRole?.value;
+        if (uid && role) {
+          result[uid] = role;
+        }
+      }
+
+      if (item.complexType?.sequence) {
+        Object.values(item.complexType.sequence).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (item.complexType?.complexContent?.extension?.sequence) {
+        Object.values(
+          item.complexType.complexContent.extension.sequence
+        ).forEach((child: any) => walk(child));
+      }
+      if (item.complexType?.all) {
+        Object.values(item.complexType.all).forEach((child: any) =>
+          walk(child)
+        );
+      }
+      if (item.complexType?.choice?.elements) {
+        Object.values(item.complexType.choice.elements).forEach((child: any) =>
+          walk(child)
+        );
+      }
+    };
+
+    walk(element);
+    return result;
+  };
+
+  const getLogicalUnitPath = (path: string, logicalUnitId: string) => {
+    const segments = path.split(".");
+    const index = segments.findIndex((segment) => segment === logicalUnitId);
+    if (index === -1) return null;
+    return segments.slice(0, index + 1).join(".");
   };
 
   const updateElementValue = (elementPath: string, value: any) => {
@@ -860,6 +952,46 @@ export function useForm() {
     });
 
     initializeElementValues({ [newKey]: copied }, elementPath);
+
+    const logicalUnitIdFromPath =
+      elementPath.match(/LogicalUnit_\d+/)?.[0] || "";
+    const isLogicalUnitCopy = copied?.name === "LogicalUnit";
+    const logicalUnitId = isLogicalUnitCopy ? newKey : logicalUnitIdFromPath;
+    const logicalUnitPath = isLogicalUnitCopy
+      ? `${elementPath}.${newKey}`
+      : logicalUnitIdFromPath
+        ? getLogicalUnitPath(elementPath, logicalUnitIdFromPath)
+        : null;
+
+    if (isLogicalUnitCopy) {
+      ensurePRuleLogicalUnitField(copied);
+    }
+
+    if (logicalUnitId && logicalUnitPath) {
+      const pruleEntries = extractPRuleLogicalUnitEntries(copied);
+      let nextLogicalUnitMap: Record<string, string> | undefined;
+
+      if (isLogicalUnitCopy) {
+        nextLogicalUnitMap = pruleEntries;
+      } else if (Object.keys(pruleEntries).length) {
+        nextLogicalUnitMap = {
+          ...(schema.pRuleLogicalUnits?.[logicalUnitId] || {}),
+          ...pruleEntries,
+        };
+      }
+
+      if (nextLogicalUnitMap) {
+        schema.pRuleLogicalUnits = {
+          ...(schema.pRuleLogicalUnits || {}),
+          [logicalUnitId]: nextLogicalUnitMap,
+        };
+      }
+
+      const pruleValue = buildPRuleLogicalUnitValue(
+        nextLogicalUnitMap || schema.pRuleLogicalUnits?.[logicalUnitId]
+      );
+      updateElementValue(`${logicalUnitPath}.PRuleLogicalUnit`, pruleValue);
+    }
   };
 
   const handleAddConditionElement = async (

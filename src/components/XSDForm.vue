@@ -40,6 +40,7 @@
             @add-dynamic-item="handleAddDynamicItem"
             @copy-dynamic-item="handleCopyDynamicItem"
             @add-condition="handleAddConditionElement"
+            @remove-condition="handleRemoveConditionElement"
           />
         </div>
       </form>
@@ -97,7 +98,8 @@ const {
   handleAddLogicalUnit,
   handleAddDynamicItem,
   handleCopyDynamicItem,
-  handleAddConditionElement
+  handleAddConditionElement,
+  handleRemoveConditionElement
 } = useForm();
 
 // Предоставляем схему для дочерних компонентов

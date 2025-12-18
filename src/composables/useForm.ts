@@ -903,6 +903,37 @@ export function useForm() {
     initializeElementValues({ [condName]: newItem }, elementPath);
   };
 
+  const handleRemoveConditionElement = (
+    elementPath: string,
+    condName: "PropertyCond" | "RelationCond"
+  ) => {
+    const targetElement = elementPathMap.get(elementPath);
+    const condElement = targetElement?.complexType?.sequence?.[condName];
+    if (!condElement || !targetElement?.complexType?.sequence) return;
+
+    const logicalUnitId = elementPath.match(/LogicalUnit_\d+/)?.[0] as
+      | string
+      | undefined;
+    const condUid =
+      condElement?.complexType?.sequence?.ConditionUid?.value || null;
+
+    if (logicalUnitId && condUid && schema.pRuleLogicalUnits?.[logicalUnitId]) {
+      const nextPruMap = { ...schema.pRuleLogicalUnits };
+      const luMap = { ...nextPruMap[logicalUnitId] };
+      if (luMap[condUid]) {
+        delete luMap[condUid];
+      }
+      if (Object.keys(luMap).length) {
+        nextPruMap[logicalUnitId] = luMap;
+      } else {
+        delete nextPruMap[logicalUnitId];
+      }
+      schema.pRuleLogicalUnits = nextPruMap;
+    }
+
+    delete targetElement.complexType.sequence[condName];
+  };
+
   const handleAddLogicalUnit = async (elementPath: string) => {
     await nextTick();
     const targetElement = elementPathMap.get(elementPath);
@@ -1068,5 +1099,6 @@ export function useForm() {
     handleAddDynamicItem,
     handleCopyDynamicItem,
     handleAddConditionElement,
+    handleRemoveConditionElement,
   };
 }

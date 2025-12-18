@@ -164,30 +164,45 @@
               @add-dynamic-item="handleChildAddDynamic"
               @copy-dynamic-item="(path: string, itemKey: string) => emit('copy-dynamic-item', path, itemKey)"
               @add-condition="handleChildAddCondition"
+              @remove-condition="handleChildRemoveCondition"
             />
           </div>
-          <DxButton
-            v-if="
-              element.name === 'Property' &&
-              !element.complexType.sequence?.PropertyCond
-            "
-            text="+ Добавить условие"
-            type="default"
-            styling-mode="outlined"
-            class="ml-10 my-2"
-            @click="handleAddCondition('PropertyCond')"
-          />
-          <DxButton
-            v-else-if="
-              element.name === 'Relation' &&
-              !element.complexType.sequence?.RelationCond
-            "
-            text="+ Добавить условие"
-            type="default"
-            styling-mode="outlined"
-            class="ml-10 my-2"
-            @click="handleAddCondition('RelationCond')"
-          />
+          <template v-if="element.name === 'Property'">
+            <DxButton
+              v-if="!element.complexType.sequence?.PropertyCond"
+              text="+ Добавить условие"
+              type="default"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleAddCondition('PropertyCond')"
+            />
+            <DxButton
+              v-else
+              text="- Убрать условие"
+              type="danger"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleRemoveCondition('PropertyCond')"
+            />
+          </template>
+          <template v-else-if="element.name === 'Relation'">
+            <DxButton
+              v-if="!element.complexType.sequence?.RelationCond"
+              text="+ Добавить условие"
+              type="default"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleAddCondition('RelationCond')"
+            />
+            <DxButton
+              v-else
+              text="- Убрать условие"
+              type="danger"
+              styling-mode="outlined"
+              class="ml-10 my-2"
+              @click="handleRemoveCondition('RelationCond')"
+            />
+          </template>
         </template>
 
         <ChoiceField
@@ -217,6 +232,7 @@
               @add-logical-unit="emit('add-logical-unit', $event)"
               @add-dynamic-item="handleChildAddDynamic"
               @add-condition="handleChildAddCondition"
+              @remove-condition="handleChildRemoveCondition"
             />
           </div>
         </template>
@@ -327,6 +343,11 @@ interface Emits {
   (e: "copy-dynamic-item", path: string, key: string): void;
   (
     e: "add-condition",
+    path: string,
+    condName: "PropertyCond" | "RelationCond"
+  ): void;
+  (
+    e: "remove-condition",
     path: string,
     condName: "PropertyCond" | "RelationCond"
   ): void;
@@ -624,6 +645,10 @@ const handleAddCondition = (condName: "PropertyCond" | "RelationCond") => {
   emit("add-condition", currentPath.value, condName);
 };
 
+const handleRemoveCondition = (condName: "PropertyCond" | "RelationCond") => {
+  emit("remove-condition", currentPath.value, condName);
+};
+
 const handleChildAddEntity = (path: string) => {
   emit("add-entity", path);
 };
@@ -649,6 +674,13 @@ const handleChildAddCondition = (
   condName: "PropertyCond" | "RelationCond"
 ) => {
   emit("add-condition", path, condName);
+};
+
+const handleChildRemoveCondition = (
+  path: string,
+  condName: "PropertyCond" | "RelationCond"
+) => {
+  emit("remove-condition", path, condName);
 };
 
 const removeItemDependencies = (

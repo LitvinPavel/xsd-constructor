@@ -266,6 +266,7 @@
       "
       :key="`${currentPath}-${element.name}-entityId`"
       :name="element.name"
+      :value="element.value"
       :label="element.annotation.documentation"
       :element-path="currentPath"
       @update-value="handleSelectEntity"

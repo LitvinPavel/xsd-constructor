@@ -21,6 +21,7 @@ interface Props {
   name: string;
   label?: string;
   elementPath: string;
+  value?: string;
 }
 
 interface Emits {
@@ -35,7 +36,7 @@ const fieldId = useId();
 
 const get = (path: string) => getNestedValue(schema, path);
 
-const selectedEntityUid = ref<string | undefined>(undefined);
+const selectedEntityUid = ref<string | undefined>(props.value);
 
 const logicalUnitPath = computed(() => {
   const parts = props.elementPath.split(".");

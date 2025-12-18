@@ -946,6 +946,57 @@ export function useForm() {
     const copied = reactive(deepCopyElement(source));
     regenerateUids(copied, source.name || sourceKey);
 
+    const buildEntityUidMap = (sourceLu: any, copiedLu: any) => {
+      const sourceEntities =
+        sourceLu?.complexType?.sequence?.Entities?.complexType?.sequence;
+      const copiedEntities =
+        copiedLu?.complexType?.sequence?.Entities?.complexType?.sequence;
+      if (!sourceEntities || !copiedEntities) return {};
+
+      const map: Record<string, string> = {};
+      Object.keys(sourceEntities).forEach((key) => {
+        const sourceEntity = sourceEntities[key];
+        const copiedEntity = copiedEntities[key];
+        const sourceUid = sourceEntity?.complexType?.sequence?.EntityUid?.value;
+        const copiedUid = copiedEntity?.complexType?.sequence?.EntityUid?.value;
+        if (sourceUid && copiedUid) {
+          map[String(sourceUid)] = String(copiedUid);
+        }
+      });
+
+      return map;
+    };
+
+    const remapRelationEntityRefs = (
+      logicalUnit: any,
+      uidMap: Record<string, string>
+    ) => {
+      if (!logicalUnit || !Object.keys(uidMap).length) return;
+      const relations =
+        logicalUnit?.complexType?.sequence?.Relations?.complexType?.sequence;
+      if (!relations || typeof relations !== "object") return;
+
+      Object.values(relations).forEach((relation: any) => {
+        const sequence = relation?.complexType?.sequence;
+        if (!sequence) return;
+
+        ["HeadObjectId", "TailObjectId"].forEach((field) => {
+          const target = sequence[field];
+          const current = target?.value;
+          if (current === undefined || current === null) return;
+          const mapped = uidMap[String(current)];
+          if (mapped) {
+            target.value = mapped;
+          }
+        });
+      });
+    };
+
+    if (copied?.name === "LogicalUnit") {
+      const entityUidMap = buildEntityUidMap(source, copied);
+      remapRelationEntityRefs(copied, entityUidMap);
+    }
+
     targetElement.complexType.sequence = reactive({
       ...targetElement.complexType.sequence,
       [newKey]: copied,

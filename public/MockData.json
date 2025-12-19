@@ -128,6 +128,51 @@
           "KSIUIN": "KSI010000777",
           "KSIVersion": "2025-10-07"
         }
+      },
+      {
+        "id": "ksi_9",
+        "name": "Чердак",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "RZo",
+          "KSICodeOfClass": "SB",
+          "KSINameOfClass": "Чердак",
+          "KSIUIN": "KSI010001036",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_10",
+        "name": "Порог",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Com",
+          "KSICodeOfClass": "UNB",
+          "KSINameOfClass": "порог",
+          "KSIUIN": "KSI060000688",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_11",
+        "name": "Высота порога",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Prp",
+          "KSICodeOfClass": "CPG_0034",
+          "KSINameOfClass": "Высота порога",
+          "KSIUIN": "KSI210000966",
+          "KSIVersion": "2025-10-07"
+        }
       }
     ],
     "Organization": [

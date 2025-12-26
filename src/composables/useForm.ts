@@ -10,7 +10,10 @@ import {
   clearElementValues,
   getReqElementType,
 } from "@/utils/xsdUtils";
-import type { XSDSchema } from "@/types";
+import type { XSDSchema, XSDElement } from "@/types";
+
+const IS_COMPUTABLE_PATH =
+  "elements.Requirement.complexType.sequence.MDATA.complexType.sequence.ReqMetadata.complexType.sequence.IsComputable";
 
 export function useForm() {
   const schema = reactive<XSDSchema>({
@@ -30,6 +33,56 @@ export function useForm() {
   const errorMessage = ref<string | null>(null);
   const pruleTemplate = ref<any | null>(null);
   const dynamicTemplates: Record<string, any> = reactive({});
+
+  const isValueFilled = (value: unknown) =>
+    value !== undefined && value !== null && value !== "";
+
+  const getIsComputableElement = (): XSDElement | undefined => {
+    return getNestedValue(schema, IS_COMPUTABLE_PATH);
+  };
+
+  const getIsComputableElementPath = (): string | null => {
+    const target = getIsComputableElement();
+    if (!target) return null;
+
+    for (const [path, element] of elementPathMap.entries()) {
+      if (element === target) {
+        return path;
+      }
+    }
+
+    return null;
+  };
+
+  const ensureIsComputableDefault = () => {
+    const target = getIsComputableElement();
+    if (
+      target &&
+      (target.value === undefined ||
+        target.value === null ||
+        target.value === "")
+    ) {
+      target.value = false;
+    }
+  };
+
+  const setIsComputableValue = (nextValue: boolean) => {
+    const target = getIsComputableElement();
+    if (!target) return;
+
+    target.value = nextValue;
+
+    const path = getIsComputableElementPath();
+    if (path) {
+      elementValues[path] = nextValue;
+    }
+  };
+
+  const getIsComputableValue = (): boolean => {
+    const target = getIsComputableElement();
+    const value = target?.value;
+    return value === true || value === "true" || value === 1 || value === "1";
+  };
 
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -108,6 +161,7 @@ export function useForm() {
       );
       preparePRulesTemplateAndClear();
       addPRuleFieldsToLogicalUnits(schema.elements);
+      ensureIsComputableDefault();
       initializeElementValues(schema.elements);
       errorMessage.value = null;
     } catch (error) {
@@ -640,6 +694,10 @@ export function useForm() {
         },
       };
     } else if (elementPath.endsWith("PRuleLogicalUnit")) {
+      if (isValueFilled(value)) {
+        console.log(value)
+        setIsComputableValue(true);
+      }
       syncPRulesWithLogicalUnits();
     }
   };
@@ -1255,10 +1313,67 @@ export function useForm() {
     }
   };
 
-  const generateXML = () => {
+  const confirmNonComputableVisible = ref(false);
+  let confirmResolver: ((result: boolean) => void) | null = null;
+
+  const hasPRuleReferences = (): boolean => {
+    return Object.values(schema.pRuleLogicalUnits || {}).some(
+      (entries) => entries && Object.values(entries).some((entry) => entry)
+    );
+  };
+
+  const validateIsComputableState = async (): Promise<boolean> => {
+    const requestConfirmation = async (): Promise<boolean> => {
+      confirmNonComputableVisible.value = true;
+      return new Promise<boolean>((resolve) => {
+        confirmResolver = resolve;
+      });
+    };
+
+    const isComputableEnabled = getIsComputableValue();
+    if (isComputableEnabled && !hasPRuleReferences()) {
+      errorMessage.value =
+        "В конструкторе есть противоречие: требуется снять отметку IsComputable или добавить правила проверки хотя бы для одной логической единицы.";
+      return false;
+    }
+
+    if (!isComputableEnabled) {
+      const proceed = confirmResolver ? false : await requestConfirmation();
+      if (!proceed) {
+        errorMessage.value =
+          "Генерация XML отменена: требование не отмечено как программно-проверяемое.";
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const confirmNonComputable = () => {
+    if (confirmResolver) {
+      confirmResolver(true);
+      confirmResolver = null;
+    }
+    confirmNonComputableVisible.value = false;
+  };
+
+  const cancelNonComputable = () => {
+    if (confirmResolver) {
+      confirmResolver(false);
+      confirmResolver = null;
+    }
+    confirmNonComputableVisible.value = false;
+  };
+
+  const generateXML = async () => {
     try {
       syncPRulesWithLogicalUnits();
       errorMessage.value = null;
+      if (!(await validateIsComputableState())) {
+        generatedXML.value = "";
+        return;
+      }
+      
       generatedXML.value = generateXMLWithValidation(schema);
     } catch (error) {
       console.error("Error generating XML:", error);
@@ -1272,6 +1387,7 @@ export function useForm() {
     schema,
     generatedXML,
     errorMessage,
+    confirmNonComputableVisible,
     generateXML,
     handleFileUpload,
     updateElementValue,
@@ -1283,5 +1399,7 @@ export function useForm() {
     handleCopyDynamicItem,
     handleAddConditionElement,
     handleRemoveConditionElement,
+    confirmNonComputable,
+    cancelNonComputable,
   };
 }

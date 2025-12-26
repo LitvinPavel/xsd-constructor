@@ -293,7 +293,7 @@
     <BaseFieldInput
       v-else
       :key="`${currentPath}-${element.name}-input`"
-      :value="element.value || ''"
+      :value="element.value ?? ''"
       :name="element.name"
       :label="element.annotation?.documentation"
       :type="getInputType(element.type)"

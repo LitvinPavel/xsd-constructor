@@ -13,13 +13,6 @@
       />
     </div>
 
-    <div
-      v-if="errorMessage"
-      class="mb-4 rounded-md border border-red-200 bg-red-50 text-red-800 px-4 py-3"
-    >
-      {{ errorMessage }}
-    </div>
-
     <!-- Основная форма (для сложных элементов) -->
     <div v-if="Object.keys(schema.elements).length > 0" class="mb-6">
       <form class="bg-white rounded-lg shadow p-4" @submit.prevent.stop>
@@ -63,6 +56,27 @@
       />
     </div>
 
+    <DxPopup
+      v-model:visible="confirmNonComputableVisible"
+      :show-title="true"
+      title="Подтверждение"
+      :drag-enabled="false"
+      :width="480"
+      height="auto"
+      :show-close-button="true"
+      :hide-on-outside-click="false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-800">
+          Требование не отмечено как программно-проверяемое (IsComputable), поэтому программные правила не будут проверяться. Продолжить?
+        </p>
+        <div class="flex justify-end gap-3">
+          <DxButton text="Отмена" type="normal" styling-mode="outlined" @click="cancelNonComputable" />
+          <DxButton text="Продолжить" type="success" styling-mode="contained" @click="confirmNonComputable" />
+        </div>
+      </div>
+    </DxPopup>
+
     <!-- Результат XML -->
     <div v-if="generatedXML" class="bg-white rounded-lg shadow p-4 mt-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -79,9 +93,11 @@
 </template>
 
 <script setup lang="ts">
-import { provide } from 'vue';
+import { provide, watch } from 'vue';
 import DxFileUploader from 'devextreme-vue/file-uploader'
 import DxButton from 'devextreme-vue/button'
+import DxPopup from 'devextreme-vue/popup'
+import notify from 'devextreme/ui/notify'
 import { useForm } from '@/composables/useForm';
 import XSDGroup from '@/components/XSDGroup.vue';
 
@@ -89,6 +105,7 @@ const {
   schema, 
   generatedXML, 
   errorMessage,
+  confirmNonComputableVisible,
   generateXML, 
   handleFileUpload, 
   updateElementValue, 
@@ -99,11 +116,22 @@ const {
   handleAddDynamicItem,
   handleCopyDynamicItem,
   handleAddConditionElement,
-  handleRemoveConditionElement
+  handleRemoveConditionElement,
+  confirmNonComputable,
+  cancelNonComputable
 } = useForm();
 
-// Предоставляем схему для дочерних компонентов
 provide('schema', schema);
+
+watch(errorMessage, (message) => {
+  if (message) {
+    notify(
+      { message, type: 'error', displayTime: 8000, closeOnClick: true },
+      'error',
+      8000
+    );
+  }
+});
 
 const onFileUpload = (e: any) => {
   const file = e.value?.[0];

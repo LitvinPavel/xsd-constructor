@@ -128,6 +128,51 @@
           "KSIUIN": "KSI010000777",
           "KSIVersion": "2025-10-07"
         }
+      },
+      {
+        "id": "ksi_9",
+        "name": "Чердак",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "RZo",
+          "KSICodeOfClass": "SB",
+          "KSINameOfClass": "Чердак",
+          "KSIUIN": "KSI010001036",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_10",
+        "name": "Порог",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Com",
+          "KSICodeOfClass": "UNB",
+          "KSINameOfClass": "порог",
+          "KSIUIN": "KSI060000688",
+          "KSIVersion": "2025-10-07"
+        }
+      },
+      {
+        "id": "ksi_11",
+        "name": "Высота порога",
+        "type": "KSIIdentification",
+        "annotation": {
+          "documentation": "Идентификация по КСИ"
+        },
+        "data": {
+          "KSITableCode": "Prp",
+          "KSICodeOfClass": "CPG_0034",
+          "KSINameOfClass": "Высота порога",
+          "KSIUIN": "KSI210000966",
+          "KSIVersion": "2025-10-07"
+        }
       }
     ],
     "Organization": [
@@ -260,6 +305,13 @@
           },
           "LinkReqUid": "193159"
         }
+      }
+    ],
+    "FormulaElementData": [
+      {
+        "id": "formula_1",
+        "label": "Формула расчета λ",
+        "value": "\u003cmrow\u003e\u003cmsqrt\u003e\u003cmi\u003eλ\u003c/mi\u003e\u003c/msqrt\u003e\u003cmo\u003e=\u003c/mo\u003e\u003cmfrac\u003e\u003cmrow\u003e\u003cmtext\u003e0,5\u003c/mtext\u003e\u003cmo\u003e|\u003c/mo\u003e\u003cmrow\u003e\u003cmfrac\u003e\u003cmi\u003eb\u003c/mi\u003e\u003cmn\u003e2\u003c/mn\u003e\u003c/mfrac\u003e\u003cmo\u003e+\u003c/mo\u003e\u003cmn\u003e1.312\u003c/mn\u003e\u003cmo\u003e(\u003c/mo\u003e\u003cmn\u003e2\u003c/mn\u003e\u003cmo\u003e-\u003c/mo\u003e\u003cmi\u003eb\u003c/mi\u003e\u003cmo\u003e)\u003c/mo\u003e\u003cmi\u003elog\u003c/mi\u003e\u003cmo\u003e(\u003c/mo\u003e\u003cmtext\u003e3,7\u003c/mtext\u003e\u003cmi\u003eD\u003c/mi\u003e\u003cmsub\u003e\u003cmi\u003eB\u003c/mi\u003e\u003cmi\u003es\u003c/mi\u003e\u003c/msub\u003e\u003cmo\u003e/\u003c/mo\u003e\u003cmi\u003eK\u003c/mi\u003e\u003cmsub\u003e\u003cmi\u003es\u003c/mi\u003e\u003c/msub\u003e\u003cmo\u003e)\u003c/mo\u003e\u003c/mrow\u003e\u003cmo\u003e|\u003c/mo\u003e\u003c/mrow\u003e\u003cmi\u003elg\u003c/mi\u003e\u003c/mfrac\u003e\u003c/mrow\u003e"
       }
     ],
     "LinkNameOfSourceDocument": [

@@ -314,6 +314,20 @@
         "value": "\u003cmrow\u003e\u003cmsqrt\u003e\u003cmi\u003eλ\u003c/mi\u003e\u003c/msqrt\u003e\u003cmo\u003e=\u003c/mo\u003e\u003cmfrac\u003e\u003cmrow\u003e\u003cmtext\u003e0,5\u003c/mtext\u003e\u003cmo\u003e|\u003c/mo\u003e\u003cmrow\u003e\u003cmfrac\u003e\u003cmi\u003eb\u003c/mi\u003e\u003cmn\u003e2\u003c/mn\u003e\u003c/mfrac\u003e\u003cmo\u003e+\u003c/mo\u003e\u003cmn\u003e1.312\u003c/mn\u003e\u003cmo\u003e(\u003c/mo\u003e\u003cmn\u003e2\u003c/mn\u003e\u003cmo\u003e-\u003c/mo\u003e\u003cmi\u003eb\u003c/mi\u003e\u003cmo\u003e)\u003c/mo\u003e\u003cmi\u003elog\u003c/mi\u003e\u003cmo\u003e(\u003c/mo\u003e\u003cmtext\u003e3,7\u003c/mtext\u003e\u003cmi\u003eD\u003c/mi\u003e\u003cmsub\u003e\u003cmi\u003eB\u003c/mi\u003e\u003cmi\u003es\u003c/mi\u003e\u003c/msub\u003e\u003cmo\u003e/\u003c/mo\u003e\u003cmi\u003eK\u003c/mi\u003e\u003cmsub\u003e\u003cmi\u003es\u003c/mi\u003e\u003c/msub\u003e\u003cmo\u003e)\u003c/mo\u003e\u003c/mrow\u003e\u003cmo\u003e|\u003c/mo\u003e\u003c/mrow\u003e\u003cmi\u003elg\u003c/mi\u003e\u003c/mfrac\u003e\u003c/mrow\u003e"
       }
     ],
+    "GraphElementData": [
+      {
+        "id": "graph_1",
+        "label": "Схема эвакуации",
+        "value": "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='120' viewBox='0 0 320 120'><rect x='10' y='10' width='300' height='100' rx='8' fill='#f3f4f6' stroke='#1f2937' stroke-width='2'/><path d='M30 90 L70 30 L140 90 L200 40 L270 90' fill='none' stroke='#2563eb' stroke-width='3'/><circle cx='70' cy='30' r='5' fill='#dc2626'/><circle cx='200' cy='40' r='5' fill='#16a34a'/><text x='18' y='26' font-family='Arial' font-size='10' fill='#1f2937'>Старт</text><text x='205' y='38' font-family='Arial' font-size='10' fill='#1f2937'>Выход</text></svg>"
+      }
+    ],
+    "TableElementData": [
+      {
+        "id": "table_1",
+        "label": "Таблица параметров",
+        "value": "<table style='width:100%;border-collapse:collapse;font-family:Arial;font-size:12px;'><thead><tr><th style='border:1px solid #d1d5db;padding:6px;background:#f3f4f6;'>Параметр</th><th style='border:1px solid #d1d5db;padding:6px;background:#f3f4f6;'>Значение</th><th style='border:1px solid #d1d5db;padding:6px;background:#f3f4f6;'>Ед.</th></tr></thead><tbody><tr><td style='border:1px solid #d1d5db;padding:6px;'>b</td><td style='border:1px solid #d1d5db;padding:6px;'>0,5</td><td style='border:1px solid #d1d5db;padding:6px;'>м</td></tr><tr><td style='border:1px solid #d1d5db;padding:6px;'>D<sub>Bs</sub></td><td style='border:1px solid #d1d5db;padding:6px;'>3,7</td><td style='border:1px solid #d1d5db;padding:6px;'>м</td></tr><tr><td style='border:1px solid #d1d5db;padding:6px;'>K<sub>s</sub></td><td style='border:1px solid #d1d5db;padding:6px;'>1,312</td><td style='border:1px solid #d1d5db;padding:6px;'>–</td></tr></tbody></table>"
+      }
+    ],
     "LinkNameOfSourceDocument": [
       {
         "value": "Федеральный закон №73-ФЗ"

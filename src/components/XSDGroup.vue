@@ -301,6 +301,50 @@
       </div>
     </BaseFieldSelect>
     <BaseFieldSelect
+      v-else-if="isGraphElementDataField"
+      v-model="element.value"
+      :key="`${currentPath}-${element.name}-graph-select`"
+      :options="graphSelectOptions"
+      :name="element.name"
+      :label="element.annotation?.documentation"
+      option-key="value"
+      label-key="label"
+      :disabled="isPRuleFieldDisabled(element, currentPath)"
+      @update:modelValue="handleGraphSelect"
+    >
+      <div
+        v-if="graphPreview"
+        class="mt-3 rounded border border-gray-200 bg-white p-3 text-sm text-gray-800 overflow-auto"
+      >
+        <div class="text-xs font-medium text-gray-500 mb-2">
+          Предпросмотр схемы
+        </div>
+        <div class="graph-preview" v-html="graphPreview" />
+      </div>
+    </BaseFieldSelect>
+    <BaseFieldSelect
+      v-else-if="isTableElementDataField"
+      v-model="element.value"
+      :key="`${currentPath}-${element.name}-table-select`"
+      :options="tableSelectOptions"
+      :name="element.name"
+      :label="element.annotation?.documentation"
+      option-key="value"
+      label-key="label"
+      :disabled="isPRuleFieldDisabled(element, currentPath)"
+      @update:modelValue="handleTableSelect"
+    >
+      <div
+        v-if="tablePreview"
+        class="mt-3 rounded border border-gray-200 bg-white p-3 text-sm text-gray-800 overflow-auto"
+      >
+        <div class="text-xs font-medium text-gray-500 mb-2">
+          Предпросмотр таблицы
+        </div>
+        <div class="table-preview" v-html="tablePreview" />
+      </div>
+    </BaseFieldSelect>
+    <BaseFieldSelect
       v-else-if="element.simpleType?.restriction?.enumerations"
       v-model="element.value"
       :key="`${currentPath}-${element.name}-select`"
@@ -528,7 +572,27 @@ const formulaSelectOptions = computed(() => {
   return mockData.FormulaElementData || [];
 });
 
-const decodeFormulaValue = (value: string) => {
+const isGraphElementDataField = computed(() => {
+  if (props.element.name !== "ReqElementData") return false;
+  const segments = currentPath.value.split(".");
+  return segments.some((segment: string) => segment.includes("GraphElement"));
+});
+
+const graphSelectOptions = computed(() => {
+  return mockData.GraphElementData || [];
+});
+
+const isTableElementDataField = computed(() => {
+  if (props.element.name !== "ReqElementData") return false;
+  const segments = currentPath.value.split(".");
+  return segments.some((segment: string) => segment.includes("TableElement"));
+});
+
+const tableSelectOptions = computed(() => {
+  return mockData.TableElementData || [];
+});
+
+const decodeMarkupValue = (value: string) => {
   if (typeof window === "undefined") return value;
   const textarea = document.createElement("textarea");
   textarea.innerHTML = value;
@@ -539,11 +603,25 @@ const formulaPreview = computed(() => {
   if (!isFormulaElementDataField.value) return "";
   const rawValue = props.element.value;
   if (!rawValue) return "";
-  const decoded = decodeFormulaValue(String(rawValue)).trim();
+  const decoded = decodeMarkupValue(String(rawValue)).trim();
   if (!decoded) return "";
   return decoded.startsWith("<math")
     ? decoded
     : `<math xmlns="http://www.w3.org/1998/Math/MathML">${decoded}</math>`;
+});
+
+const graphPreview = computed(() => {
+  if (!isGraphElementDataField.value) return "";
+  const rawValue = props.element.value;
+  if (!rawValue) return "";
+  return decodeMarkupValue(String(rawValue)).trim();
+});
+
+const tablePreview = computed(() => {
+  if (!isTableElementDataField.value) return "";
+  const rawValue = props.element.value;
+  if (!rawValue) return "";
+  return decodeMarkupValue(String(rawValue)).trim();
 });
 
 const availableMockInstances = computed(() => {
@@ -652,6 +730,14 @@ const handleInputChange = (value?: string | number | boolean) => {
 };
 
 const handleFormulaSelect = (value?: string) => {
+  handleInputChange(value || "");
+};
+
+const handleGraphSelect = (value?: string) => {
+  handleInputChange(value || "");
+};
+
+const handleTableSelect = (value?: string) => {
   handleInputChange(value || "");
 };
 

@@ -505,10 +505,211 @@ export function useForm() {
     return result;
   };
 
+  const buildConditionText = (
+    condition: any,
+    context: { entityName?: string; propertyName?: string }
+  ): string | null => {
+    const uid = condition?.complexType?.sequence?.ConditionUid?.value;
+    if (!uid) return null;
+
+    const baseEntity = context.entityName || "Объект";
+    const baseProperty = context.propertyName || "Свойство";
+    const prefix = `${baseEntity}, ${baseProperty}`;
+
+    const choice = condition?.complexType?.choice;
+    const choiceElements = choice?.elements || {};
+    const selectedKey = choice?.selectedKey || Object.keys(choiceElements)[0];
+    const selected = selectedKey ? choiceElements[selectedKey] : null;
+    if (!selected) return prefix;
+
+    if (
+      selectedKey === "EqualityCondition" ||
+      selectedKey === "ComparisonCondition"
+    ) {
+      const typeOfCondition =
+        selected?.complexType?.attributes?.TypeOfCondition?.value;
+      const value = selected?.complexType?.sequence?.Value?.value;
+      const units = selected?.complexType?.sequence?.UnitsOfMeasurement?.value;
+      const tail = [typeOfCondition, value, units]
+        .filter((part) => part !== undefined && part !== null && part !== "")
+        .join(" ");
+      return tail ? `${prefix} ${tail}` : prefix;
+    }
+
+    if (selectedKey === "ValueFromListCondition") {
+      const rawValue = selected?.complexType?.sequence?.ValueFromList?.value;
+      const values = Array.isArray(rawValue)
+        ? rawValue.filter(Boolean).map(String)
+        : rawValue
+        ? [String(rawValue)]
+        : [];
+      const tail = values.join(", ");
+      return tail ? `${prefix} ${tail}` : prefix;
+    }
+
+    if (selectedKey === "ComputableCondition") {
+      const expr =
+        selected?.complexType?.sequence?.ConditionExpression?.value || "";
+      const units =
+        selected?.complexType?.sequence?.UnitsOfMeasurement?.value || "";
+      const unitText = units ? `, единицы измерения: ${units}` : "";
+      const tail = expr ? `${expr}${unitText}` : unitText;
+      return tail ? `${prefix} ${tail}` : prefix;
+    }
+
+    return prefix;
+  };
+
+  const collectConditionTexts = (): Record<string, string> => {
+    const map: Record<string, string> = {};
+
+    const walk = (
+      element: any,
+      context: { entityName?: string; propertyName?: string },
+      entityNameByUid: Record<string, string>
+    ) => {
+      if (!element || typeof element !== "object") return;
+
+      if (element.name === "Entity") {
+        const entityName =
+          element?.complexType?.sequence?.EntityName?.value ||
+          context.entityName;
+        const entityUid =
+          element?.complexType?.sequence?.EntityUid?.value || null;
+        const nextEntityMap = { ...entityNameByUid };
+        if (entityUid && entityName) {
+          nextEntityMap[String(entityUid)] = String(entityName);
+        }
+        const nextContext = { ...context, entityName };
+        if (element.complexType?.sequence) {
+          Object.values(element.complexType.sequence).forEach((child: any) =>
+            walk(child, nextContext, nextEntityMap)
+          );
+        }
+        return;
+      }
+
+      if (element.name === "Property") {
+        const propertyName =
+          element?.complexType?.sequence?.PropertyName?.value ||
+          context.propertyName;
+        const nextContext = { ...context, propertyName };
+        if (element.complexType?.sequence) {
+          Object.values(element.complexType.sequence).forEach((child: any) =>
+            walk(child, nextContext, entityNameByUid)
+          );
+        }
+        return;
+      }
+
+      if (element.name === "Relation") {
+        const relationType =
+          element?.complexType?.attributes?.TypeOfRelation?.value || "";
+        const headId = element?.complexType?.sequence?.HeadObjectId?.value;
+        const tailId = element?.complexType?.sequence?.TailObjectId?.value;
+        const headName = headId ? entityNameByUid[String(headId)] : "";
+        const tailName = tailId ? entityNameByUid[String(tailId)] : "";
+        const relationLabel =
+          relationType ||
+          [headName, tailName].filter(Boolean).join(" → ") ||
+          "Связь";
+        const relationUid =
+          element?.complexType?.sequence?.RelationUid?.value || null;
+        if (relationUid && relationLabel) {
+          map[String(relationUid)] = String(relationLabel);
+        }
+        const nextContext = {
+          ...context,
+          entityName: relationLabel,
+          propertyName: relationLabel,
+        };
+        if (element.complexType?.sequence) {
+          Object.values(element.complexType.sequence).forEach((child: any) =>
+            walk(child, nextContext, entityNameByUid)
+          );
+        }
+        return;
+      }
+
+      if (
+        element.name === "PropertyCond" ||
+        element.name === "RelationCond" ||
+        element.name === "Condition"
+      ) {
+        const uid = element?.complexType?.sequence?.ConditionUid?.value;
+        const text = buildConditionText(element, context);
+        if (uid && text) {
+          map[String(uid)] = text;
+        }
+      }
+
+      if (element.complexType?.sequence) {
+        Object.values(element.complexType.sequence).forEach((child: any) =>
+          walk(child, context, entityNameByUid)
+        );
+      }
+      if (element.complexType?.complexContent?.extension?.sequence) {
+        Object.values(
+          element.complexType.complexContent.extension.sequence
+        ).forEach((child: any) => walk(child, context, entityNameByUid));
+      }
+      if (element.complexType?.all) {
+        Object.values(element.complexType.all).forEach((child: any) =>
+          walk(child, context, entityNameByUid)
+        );
+      }
+      if (element.complexType?.choice?.elements) {
+        Object.values(element.complexType.choice.elements).forEach(
+          (child: any) => walk(child, context, entityNameByUid)
+        );
+      }
+    };
+
+    Object.values(schema.elements || {}).forEach((element: any) =>
+      walk(element, {}, {})
+    );
+
+    return map;
+  };
+
+  const buildPRuleTextValue = (
+    pRuleLogicalUnitMap: Record<string, string> | undefined,
+    conditionTextMap: Record<string, string>
+  ): string | null => {
+    if (!pRuleLogicalUnitMap) return null;
+
+    const beforeThen: string[] = [];
+    const afterThen: string[] = [];
+    const wrap = (text: string) => `(${text})`;
+
+    Object.keys(pRuleLogicalUnitMap).forEach((key) => {
+      const text = conditionTextMap[key];
+      if (!text) return;
+      if (pRuleLogicalUnitMap[key] === "посылка") {
+        beforeThen.push(wrap(text));
+      } else if (pRuleLogicalUnitMap[key] === "следствие") {
+        afterThen.push(wrap(text));
+      }
+    });
+
+    if (beforeThen.length && !afterThen.length) {
+      return beforeThen.join(" И ");
+    }
+
+    if (beforeThen.length && afterThen.length) {
+      const before = beforeThen.join(" И ");
+      const after = afterThen.join(" И ");
+      return `ЕСЛИ ${before} ТО ${after}`;
+    }
+
+    return null;
+  };
+
   const syncPRulesWithLogicalUnits = () => {
     const prulesSequence = getPRulesSequence();
     if (!prulesSequence || typeof prulesSequence !== "object") return;
 
+    const conditionTextMap = collectConditionTexts();
     const entries = collectPRuleLogicalUnitValues(schema.elements);
 
     const template =
@@ -533,6 +734,16 @@ export function useForm() {
         prule.complexType.sequence.PRuleType.value = isManual
           ? "ручной"
           : "автоматический";
+
+        if (!isManual && prule.complexType.sequence.PRuleText) {
+          prule.complexType.sequence.PRuleText.value = buildPRuleTextValue(
+            schema.pRuleLogicalUnits?.[logicalUnitId],
+            conditionTextMap
+          );
+        }
+        if (isManual && prule.complexType.sequence.PRuleText) {
+          prule.complexType.sequence.PRuleText.value = "";
+        }
       }
 
       if (prule.complexType?.attributes?.PRuleID) {

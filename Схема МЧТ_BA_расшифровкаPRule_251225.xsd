@@ -1,0 +1,1128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited by  NIC CPS www.niccps.ru -->
+<!-- edited by  BA "Бизнес-Автоматика" -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<!-- I ideComplexType: KSntification -->
+	<xs:complexType name="KSIIdentification">
+		<xs:annotation>
+			<xs:documentation>Идентификация по КСИ</xs:documentation>
+		</xs:annotation>
+		<xs:all>
+			<xs:element name="KSITableCode">
+				<!-- KsiTable.Code — значение для текущей записи, обязательное поле -->
+				<xs:annotation>
+					<xs:documentation>Код классификационной таблицы</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="RZo"/>
+						<xs:enumeration value="CCo"/>
+						<xs:enumeration value="CEn"/>
+						<xs:enumeration value="FnS"/>
+						<xs:enumeration value="TeS"/>
+						<xs:enumeration value="Com"/>
+						<xs:enumeration value="Mng"/>
+						<xs:enumeration value="LCS"/>
+						<xs:enumeration value="PER"/>
+						<xs:enumeration value="PDe"/>
+						<xs:enumeration value="PCo"/>
+						<xs:enumeration value="PMn"/>
+						<xs:enumeration value="PRe"/>
+						<xs:enumeration value="PRf"/>
+						<xs:enumeration value="PUt"/>
+						<xs:enumeration value="CPr"/>
+						<xs:enumeration value="CMa"/>
+						<xs:enumeration value="ARe"/>
+						<xs:enumeration value="HRe"/>
+						<xs:enumeration value="Inf"/>
+						<xs:enumeration value="Prp"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="KSICodeOfClass" type="xs:string">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то берем значение KsiItem.Code для текущей записи; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.ParentCode для текущей записи, обязательное поле -->
+				<xs:annotation>
+					<xs:documentation>Код класса</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KSINameOfClass" type="xs:string">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то берем значение KsiItem.Title для текущей записи; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Title для родительской записи (связанной через ParentID), обязательное поле -->
+				<xs:annotation>
+					<xs:documentation>Наименование класса</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KSICodeOfType" type="xs:string" minOccurs="0">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то не заполняем; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Code для текущей записи -->
+				<xs:annotation>
+					<xs:documentation>Код элемента</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KSITypeOfClass" type="xs:string" minOccurs="0">
+				<!-- если Code содержит только буквы или буквы и цифры, разделенные нижним подчеркиванием, то не заполняем; если Code содержит буквы и следующие за ними цифры, то берем значение KsiItem.Title для текущей записи -->
+				<xs:annotation>
+					<xs:documentation>Наименование элемента</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KSIUIN" type="xs:string">
+				<!-- KsiItem.KSIUIN — значение из текущей записи, обязательное поле -->
+				<xs:annotation>
+					<xs:documentation>УИН</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KSIVersion" type="xs:date">
+				<!-- KsiVersion.PublishDate — значение для текущей записи, обязательное поле -->
+				<xs:annotation>
+					<xs:documentation>Версия КСИ</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<!-- ComplexType: Organisation -->
+	<xs:complexType name="Organization">
+		<xs:annotation>
+			<xs:documentation>Организация</xs:documentation>
+		</xs:annotation>
+		<xs:all>
+			<xs:element name="ShortName" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Краткое наименование организации</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FullName" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Полное наименование организации</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<!-- ComplexType: Link -->
+	<xs:complexType name="Link">
+		<xs:annotation>
+			<xs:documentation>Ссылка</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="NameOfSourceDocument" type="xs:string" minOccurs="0">
+				<!-- поиск по NtdDocument.Title или ввод вручную -->
+				<xs:annotation>
+					<xs:documentation>Наименование документа, на который ссылается содержание требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LinkReqUid" type="xs:string" minOccurs="0">
+				<!-- NtdRequirements.UIN, на основании связи содержания нормативного требования с другими нормативными требованиями NtdRequirementsNtdRequirementsM2M или вручную вводим порядковый номер, если ссылка внешняя -->
+				<xs:annotation>
+					<xs:documentation>UIN или порядковый номер требования, на которое ссылается содержание требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<!-- Пишем вручную вид и номер. Даже для внутренних требований и их элементов, для них достаточно связи с требованием. Связи требования с элементами других требований в бд нет. -->
+			<xs:element name="LinkReqElementUid" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Вид и номер структурного элемента, на который ссылается содержание требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="IdLink" use="required">
+			<xs:annotation>
+				<xs:documentation>Идентификатор ссылки</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:pattern value="Link[0-9]+"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+		<xs:attribute name="LinkType" use="required">
+			<xs:annotation>
+				<xs:documentation>Тип ссылки</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="внешняя"/>
+					<xs:enumeration value="внутренняя"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+	<!-- ComplexType: ReqElement -->
+	<xs:complexType name="ReqElement">
+		<xs:annotation>
+			<xs:documentation>Структурный элемент требования</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ReqElementData" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.Content -->
+				<xs:annotation>
+					<xs:documentation>Содержимое элемента</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReqElementNumber" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.ID -->
+				<xs:annotation>
+					<xs:documentation>Номер структурного элемента в составе источника требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReqElementName" type="xs:string" minOccurs="0">
+				<!-- NtdElementAdditional.Name -->
+				<xs:annotation>
+					<xs:documentation>Наименование элемента</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReqElementLink" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ссылка на содержимое элемента требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReqElementNotes" type="xs:string" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Примечания к элементу требования</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ReqElementObjects">
+				<xs:annotation>
+					<xs:documentation>Связанные объекты</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="ReqElementObject" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Связанный объект</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="ReqElementObjectName" type="xs:string">
+										<xs:annotation>
+											<xs:documentation>Наименование связанного объекта</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+									<xs:element name="ReqElementObjectID" type="KSIIdentification" minOccurs="0">
+										<xs:annotation>
+											<xs:documentation>ID свойства</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="ReqElementType" use="required">
+			<!-- NtdElementAdditional.Type -->
+			<xs:annotation>
+				<xs:documentation>Тип структурного элемента требования</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="графическое изображение"/>
+					<xs:enumeration value="таблица"/>
+					<xs:enumeration value="формула"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+	<!-- ComplexType: Condition -->
+	<xs:complexType name="Condition">
+		<xs:annotation>
+			<xs:documentation>Условие</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ConditionUid">
+				<xs:annotation>
+					<xs:documentation>Уникальный ID условия</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:pattern value="Condition([0-9]+)"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:choice>
+				<xs:element name="EqualityCondition">
+					<xs:annotation>
+						<xs:documentation>Условия равенства</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Value">
+								<xs:annotation>
+									<xs:documentation>Значение</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:union memberTypes="xs:integer xs:decimal"/>
+								</xs:simpleType>
+							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
+							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Единицы измерения</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="TypeOfCondition" use="required">
+							<!-- NtdCondition.Title -->
+							<xs:annotation>
+								<xs:documentation>Тип условия</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="равно"/>
+									<xs:enumeration value="не равно"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ComparisonCondition">
+					<xs:annotation>
+						<xs:documentation>Условия сравнения</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Value">
+								<xs:annotation>
+									<xs:documentation>Значение</xs:documentation>
+								</xs:annotation>
+								<xs:simpleType>
+									<xs:union memberTypes="xs:integer xs:decimal"/>
+								</xs:simpleType>
+							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
+							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Единицы измерения</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="TypeOfCondition" use="required">
+							<!-- NtdCondition.Title -->
+							<xs:annotation>
+								<xs:documentation>Тип условия</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:enumeration value="меньше"/>
+									<xs:enumeration value="больше"/>
+									<xs:enumeration value="меньше или равно"/>
+									<xs:enumeration value="больше или равно"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ValueFromListCondition">
+					<xs:annotation>
+						<xs:documentation>Значение из списка</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="ValueFromList" type="xs:anySimpleType" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Значение в списке</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ComputableCondition">
+					<xs:annotation>
+						<xs:documentation>Вычисляемое условие</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="ConditionExpression" type="xs:string">
+								<xs:annotation>
+									<xs:documentation>Выражение для вычисления</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<!-- NtdMeasure.Title, с возможностью ввести вручную -->
+							<xs:element name="UnitsOfMeasurement" type="xs:string" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Единицы измерения</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+			<xs:element name="ConditionRole" default="посылка">
+				<xs:annotation>
+					<xs:documentation>Роль условия в логическом выражении</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string" >
+						<xs:enumeration value="посылка"/>
+						<xs:enumeration value="следствие"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<!-- RootElement: REQUIREMENT -->
+	<xs:element name="Requirement">
+		<xs:annotation>
+			<xs:documentation>Требование</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<!-- METADATA LAYER -->
+				<xs:element name="MDATA">
+					<xs:annotation>
+						<xs:documentation>Слой метаданных</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="DocMetadata">
+								<xs:annotation>
+									<xs:documentation>Метаданные источника требования</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="DocNumber" type="xs:string">
+											<!-- NtdDocument.Number -->
+											<xs:annotation>
+												<xs:documentation>Номер документа (NtdDocument.Number)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DocUId" type="xs:integer">
+											<!-- NtdDocument.DocID -->
+											<xs:annotation>
+												<xs:documentation>ID документа (NtdDocument.DocID)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="DocName">
+											<xs:annotation>
+												<xs:documentation>Наименование документа</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="DocRusName" type="xs:string">
+														<!-- NtdDocument.Title -->
+														<xs:annotation>
+															<xs:documentation>Наименование документа на русском языке (NtdDocument.Title)</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<!-- NtdDocument.Translation -->
+													<xs:element name="DocEngName" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>Наименование документа на английском языке (NtdDocument.Translation)</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="CodeISO" type="xs:string" minOccurs="0">
+											<!-- NtdDocument.ISOCodes -->
+											<xs:annotation>
+												<xs:documentation>Код ISO (NtdDocument.ISOCodes)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ProvidedBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Customer - в FullName -->
+											<xs:annotation>
+												<xs:documentation>Внесен (NtdDocument.Customer)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ApprovedBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Publisher - в FullName -->
+											<xs:annotation>
+												<xs:documentation>Подготовлен к утверждению (Publisher)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="AuthorizedBy" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Исполнители</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="Developer" type="Organization" maxOccurs="unbounded">
+														<!-- NtdAuthor.Title - в ShortName -->
+														<xs:annotation>
+															<xs:documentation>Исполнитель (NtdAuthor.Title)</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="RegisteredBy" type="Organization" minOccurs="0">
+											<!-- NtdDocument.Initiator - в FullName -->
+											<xs:annotation>
+												<xs:documentation>Зарегистрирован (NtdDocument.Initiator)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="EffectiveDate" type="xs:date" minOccurs="0">
+											<!-- NtdDocument.EffectiveDate -->
+											<xs:annotation>
+												<xs:documentation>Дата ввода в действие документа (NtdDocument.EffectiveDate)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="KeyWords" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Ключевые слова</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<!-- NtdDocumentKeyword.Title если создадим такое поле -->
+													<xs:element name="KeyWord" type="xs:string" maxOccurs="unbounded"/>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="AreaOfApplication" type="xs:string" minOccurs="0">
+											<!-- NtdDocument.Scope -->
+											<xs:annotation>
+												<xs:documentation>Область применения (NtdDocument.Scope)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ObjectsOfStandartization">
+											<xs:annotation>
+												<xs:documentation>Объекты нормирования</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="ObjectOfStandartization" maxOccurs="unbounded">
+														<xs:annotation>
+															<xs:documentation>Объект нормирования</xs:documentation>
+														</xs:annotation>
+														<xs:complexType>
+															<xs:sequence>
+																<xs:element name="ObjectName" type="xs:string">
+																	<xs:annotation>
+																		<xs:documentation>Наименование объекта</xs:documentation>
+																	</xs:annotation>
+																</xs:element>
+																<xs:element name="ObjectID" type="KSIIdentification" minOccurs="0" maxOccurs="unbounded">
+																	<xs:annotation>
+																		<xs:documentation>Класс/элемент КСИ</xs:documentation>
+																	</xs:annotation>
+																</xs:element>
+															</xs:sequence>
+														</xs:complexType>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<!-- BA: Документ может иметь несколько аспектов безопасности, поэтому вместо атрибута добавлен набор элементов -->
+										<xs:element name="SecurityAspects" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Аспекты безопасности (согласно 384-ФЗ)</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="SecurityAspect"  maxOccurs="unbounded">
+														<!-- NtdSecurityAspect.Title  -->
+														<xs:annotation>
+															<xs:documentation>Аспект безопасности (NtdSecurityAspect.Title)</xs:documentation>
+														</xs:annotation>
+														<xs:simpleType>
+															<xs:restriction base="xs:string" >
+																<xs:enumeration value="механической безопасности"/>
+																<xs:enumeration value="пожарной безопасности"/>
+																<xs:enumeration value="безопасности при опасных природных процессах и явлениях и (или) техногенных воздействиях"/>
+																<xs:enumeration value="безопасных для здоровья человека условий проживания и пребывания в зданиях и сооружениях"/>
+																<xs:enumeration value="безопасности для пользователей зданиями и сооружениями"/>
+																<xs:enumeration value="доступности зданий и сооружений для инвалидов и других групп населения с ограниченными возможностями передвижения"/>
+																<xs:enumeration value="энергетической эффективности зданий и сооружений"/>
+																<xs:enumeration value="безопасного уровня воздействия зданий и сооружений на окружающую среду"/>
+															</xs:restriction>
+														</xs:simpleType>
+													</xs:element>
+												</xs:sequence>	
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+									<xs:attribute name="DocType" use="required">
+										<!-- NtdDocumentKind.Title -->
+										<xs:annotation>
+											<xs:documentation>Вид документа (NtdDocumentKind.Title)</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="Акт федерального органа исполнительной власти"/>
+												<xs:enumeration value="ГОСТ"/>
+												<xs:enumeration value="ГОСТ Р"/>
+												<xs:enumeration value="Основы законодательства"/>
+												<xs:enumeration value="Постановление Правительства РФ"/>
+												<xs:enumeration value="Распоряжение"/>
+												<xs:enumeration value="Решение Совета Евразийской экономической комиссии"/>
+												<xs:enumeration value="СанПиН"/>
+												<xs:enumeration value="Свод правил"/>
+												<xs:enumeration value="ТР ЕАЭС/ ТР ТС"/>
+												<xs:enumeration value="Федеральный закон"/>
+												<xs:enumeration value="ФНиП"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+									<xs:attribute name="DocCategory" use="required">
+										<!-- NtdKindGroup.Title -->
+										<xs:annotation>
+											<xs:documentation>Группа документа (NtdKindGroup.Title)</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="Документы по стандартизации"/>
+												<xs:enumeration value="Нормативный правовой акт"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+									<xs:attribute name="DocStatus">
+										<!-- NtdDocument.Status -->
+										<xs:annotation>
+											<xs:documentation>Статус документа (NtdDocument.Status)</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="В разработке"/>
+												<xs:enumeration value="Проект"/>
+												<xs:enumeration value="Действует"/>
+												<xs:enumeration value="Заменен"/>
+												<xs:enumeration value="Отменен"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="ReqMetadata">
+								<xs:annotation>
+									<xs:documentation>Метаданные требования</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="ReqUId" type="xs:integer">
+											<!-- NtdRequirements.UIN -->
+											<xs:annotation>
+												<xs:documentation>ЮИН требования (NtdRequirements.UIN)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ReqNumber" type="xs:string">
+											<!-- NtdRequirements.Number -->
+											<xs:annotation>
+												<xs:documentation>Порядковый номер (NtdRequirements.Number)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="SectionOfDoc" type="xs:string" minOccurs="0">
+											<!-- NtdDocumentSection.Title -->
+											<xs:annotation>
+												<xs:documentation>Раздел документа (NtdDocumentSection.Title)</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="IsComputable" type="xs:boolean">
+											<xs:annotation>
+												<xs:documentation>Программно проверяемое требование</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<!-- BA: Добавлен элемент NeedDataLink с информацией о ссылках на другие данные, важные для понимания этого требования, без которых это требование нельзя считать достаточным для корректной проверки проектируемой модели -->
+										<xs:element name="NeedDataLinks" minOccurs="0" >
+											<xs:annotation>
+												<xs:documentation>Ссылки на другие данные, дополняющие это требование, без которых оно не может считаться достаточным</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="NeedDataLink" type="xs:string" maxOccurs="unbounded">
+														<xs:annotation>
+															<xs:documentation>Ссылка на другие данные, дополняющие это требование</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="ReqObject">
+											<xs:annotation>
+												<xs:documentation>Объект требования</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="ObjectOfReq" maxOccurs="unbounded">
+														<xs:annotation>
+															<xs:documentation>Объект нормирования</xs:documentation>
+														</xs:annotation>
+														<xs:complexType>
+															<xs:sequence>
+																<!-- NtdRequirementsObjectNorm скорее всего, здесь выбираем в конструкторе из кси, а вот складываем в эту сущность и добавляем связь с требованием -->
+																<xs:element name="ObjectName" type="xs:string">
+																	<xs:annotation>
+																		<xs:documentation>Наименование объекта</xs:documentation>
+																	</xs:annotation>
+																</xs:element>
+																<xs:element name="ObjectID" type="KSIIdentification" minOccurs="0" maxOccurs="unbounded">
+																	<xs:annotation>
+																		<xs:documentation>Класс/элемент КСИ</xs:documentation>
+																	</xs:annotation>
+																</xs:element>
+															</xs:sequence>
+														</xs:complexType>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="ReqNotes" type="xs:string" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Примечание к требованию</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+										<xs:element name="ReqLinks" minOccurs="0">
+											<xs:annotation>
+												<xs:documentation>Ссылки</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="ReqLink" type="Link" maxOccurs="unbounded">
+														<xs:annotation>
+															<xs:documentation>Ссылка в составе требования</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+											<xs:unique name="uniqueIdLink">
+												<xs:selector xpath="ReqLink"/>
+												<xs:field xpath="@IdLink"/>
+											</xs:unique>
+										</xs:element>
+									</xs:sequence>
+									<xs:attribute name="ReqType">
+										<!-- возможно, NtdRequirementsType, возможно, NtdRequirementsRegulation -->
+										<xs:annotation>
+											<xs:documentation>Тип требования</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:string">
+												<xs:enumeration value="Обязательное требование"/>
+												<xs:enumeration value="Альтернативное требование"/>
+												<xs:enumeration value="Правило"/>
+												<xs:enumeration value="Рекомендация"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:attribute>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<!-- VIEW LAYER -->
+				<xs:element name="VIEW">
+					<xs:annotation>
+						<xs:documentation>Слой представления требования</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="TextView" type="xs:string">
+								<xs:annotation>
+									<xs:documentation>Текстовое представление</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="GraphView" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Графическое представление</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="GraphElement" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Графический элемент</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:complexContent>
+													<xs:extension base="ReqElement">
+														<xs:attribute name="ReqElementUId" use="required">
+															<xs:annotation>
+																<xs:documentation>Уникальный идентификатор графического элемента</xs:documentation>
+															</xs:annotation>
+															<xs:simpleType>
+																<xs:restriction base="xs:string">
+																	<xs:pattern value="Graph[0-9]+"/>
+																</xs:restriction>
+															</xs:simpleType>
+														</xs:attribute>
+													</xs:extension>
+												</xs:complexContent>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="TableView" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Табличное представление</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="TableElement" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Табличный элемент</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:complexContent>
+													<xs:extension base="ReqElement">
+														<xs:attribute name="ReqElementUId" use="required">
+															<xs:annotation>
+																<xs:documentation>Уникальный идентификатор табличного элемента</xs:documentation>
+															</xs:annotation>
+															<xs:simpleType>
+																<xs:restriction base="xs:string">
+																	<xs:pattern value="Table[0-9]+"/>
+																</xs:restriction>
+															</xs:simpleType>
+														</xs:attribute>
+													</xs:extension>
+												</xs:complexContent>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="FormulasView" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Формульные записи</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="FormulaElement" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Формула</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:complexContent>
+													<xs:extension base="ReqElement">
+														<xs:attribute name="ReqElementUId" use="required">
+															<xs:annotation>
+																<xs:documentation>Уникальный идентификатор формульного элемента</xs:documentation>
+															</xs:annotation>
+															<xs:simpleType>
+																<xs:restriction base="xs:string">
+																	<xs:pattern value="Formula[0-9]+"/>
+																</xs:restriction>
+															</xs:simpleType>
+														</xs:attribute>
+													</xs:extension>
+												</xs:complexContent>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+					<xs:unique name="uniqueReqElement">
+						<xs:selector xpath="GraphView/GraphElement | TableView/TableElement | FormulasView/FormulaElement"/>
+						<xs:field xpath="@ReqElementUId"/>
+					</xs:unique>
+				</xs:element>
+				<!-- DATAMODEL LAYER -->
+				<xs:element name="DMODEL" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Слой описания модели данных</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<!-- BA: Добавлен элемент LogicalUnits с набором элементов LogicalUnit, каждый из которых содержит ранее существующие элементы Entities и Relations.
+					Смысл добавления - разделение общего текста требования на атомарные логические единицы для облегчения выделения объектов, свойств, отношений и формирования логических правил.
+					На том же уровне, что и Entities и Relations добавлен элемент Text для текстового содержания логической единицы
+							-->
+							<xs:element name="LogicalUnits">
+								<xs:annotation>
+									<xs:documentation>Набор логических единиц</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="LogicalUnit" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Логическая единица</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="Text" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>Текст логической единицы</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<xs:element name="Entities">
+														<xs:annotation>
+															<xs:documentation>Информационные сущности требования</xs:documentation>
+														</xs:annotation>
+														<xs:complexType>
+															<xs:sequence>
+																<xs:element name="Entity" maxOccurs="unbounded">
+																	<xs:annotation>
+																		<xs:documentation>Информационная сущность требования</xs:documentation>
+																	</xs:annotation>
+																	<xs:complexType>
+																		<xs:sequence>
+																			<xs:element name="EntityUid">
+																				<xs:annotation>
+																					<xs:documentation>Уникальный ID</xs:documentation>
+																				</xs:annotation>
+																				<xs:simpleType>
+																					<xs:restriction base="xs:string">
+																						<xs:pattern value="Object([0-9])+"/>
+																					</xs:restriction>
+																				</xs:simpleType>
+																			</xs:element>
+																			<xs:element name="EntityName" type="xs:string">
+																				<xs:annotation>
+																					<xs:documentation>Наименование сущности</xs:documentation>
+																				</xs:annotation>
+																			</xs:element>
+																			<xs:element name="EntityID" type="KSIIdentification" minOccurs="0">
+																				<xs:annotation>
+																					<xs:documentation>ID сущности</xs:documentation>
+																				</xs:annotation>
+																			</xs:element>
+																			<xs:element name="Properties" minOccurs="0">
+																				<xs:annotation>
+																					<xs:documentation>Свойства</xs:documentation>
+																				</xs:annotation>
+																				<xs:complexType>
+																					<xs:sequence>
+																						<xs:element name="Property" maxOccurs="unbounded">
+																							<xs:annotation>
+																								<xs:documentation>Свойство сущности</xs:documentation>
+																							</xs:annotation>
+																							<xs:complexType>
+																								<xs:sequence>
+																									<xs:element name="PropertyUid">
+																										<xs:annotation>
+																											<xs:documentation>Уникальный ID</xs:documentation>
+																										</xs:annotation>
+																										<xs:simpleType>
+																											<xs:restriction base="xs:string">
+																												<xs:pattern value="Property([0-9])+"/>
+																											</xs:restriction>
+																										</xs:simpleType>
+																									</xs:element>
+																									<xs:element name="PropertyName" type="xs:string">
+																										<xs:annotation>
+																											<xs:documentation>Наименование свойства</xs:documentation>
+																										</xs:annotation>
+																									</xs:element>
+																									<xs:element name="PropertyID" type="KSIIdentification" minOccurs="0">
+																										<xs:annotation>
+																											<xs:documentation>ID свойства</xs:documentation>
+																										</xs:annotation>
+																									</xs:element>
+																									<xs:element name="PropertyCond" type="Condition" minOccurs="0" maxOccurs="unbounded">
+																										<xs:annotation>
+																											<xs:documentation>Условие для свойства</xs:documentation>
+																										</xs:annotation>
+																									</xs:element>
+																								</xs:sequence>
+																							</xs:complexType>
+																						</xs:element>
+																					</xs:sequence>
+																				</xs:complexType>
+																			</xs:element>
+																		</xs:sequence>
+																	</xs:complexType>
+																</xs:element>
+															</xs:sequence>
+														</xs:complexType>
+													</xs:element>
+													<xs:element name="Relations" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>Отношения</xs:documentation>
+														</xs:annotation>
+														<xs:complexType>
+															<xs:sequence>
+																<xs:element name="Relation" maxOccurs="unbounded">
+																	<xs:annotation>
+																		<xs:documentation>Отношение</xs:documentation>
+																	</xs:annotation>
+																	<xs:complexType>
+																		<xs:sequence>
+																			<xs:element name="RelationUid">
+																				<xs:annotation>
+																					<xs:documentation>Уникальный ID отношения</xs:documentation>
+																				</xs:annotation>
+																				<xs:simpleType>
+																					<xs:restriction base="xs:string">
+																						<xs:pattern value="Relation([0-9]+)"/>
+																					</xs:restriction>
+																				</xs:simpleType>
+																			</xs:element>
+																			<xs:element name="HeadObjectId" type="xs:string">
+																				<xs:annotation>
+																					<xs:documentation>ID первого объекта</xs:documentation>
+																				</xs:annotation>
+																			</xs:element>
+																			<xs:element name="TailObjectId" type="xs:string">
+																				<xs:annotation>
+																					<xs:documentation>ID второго объекта</xs:documentation>
+																				</xs:annotation>
+																			</xs:element>
+																			<xs:element name="RelationCond" type="Condition" minOccurs="0" maxOccurs="unbounded">
+																				<xs:annotation>
+																					<xs:documentation>Условие для отношения</xs:documentation>
+																				</xs:annotation>
+																			</xs:element>
+																			<xs:element name="RelationRole" default="посылка">
+																				<xs:annotation>
+																					<xs:documentation>Роль отношения в логическом выражении</xs:documentation>
+																				</xs:annotation>
+																				<xs:simpleType>
+																					<xs:restriction base="xs:string" >
+																						<xs:enumeration value="посылка"/>
+																						<xs:enumeration value="следствие"/>
+																					</xs:restriction>
+																				</xs:simpleType>
+																			</xs:element>
+																		</xs:sequence>
+																		<xs:attribute name="TypeOfRelation" use="required">
+																			<xs:annotation>
+																				<xs:documentation>Тип отношения</xs:documentation>
+																			</xs:annotation>
+																			<xs:simpleType>
+																				<xs:restriction base="xs:string">
+																					<xs:enumeration value="Расстояние между центрами boundingBox"/>
+																					<xs:enumeration value="Вертикальная проекция между центрами boundingBox"/>
+																					<xs:enumeration value="Горизонтальная проекция между центрами boundingBox"/>
+																					<xs:enumeration value="Расстояние от центра до поверхности"/>
+																					<xs:enumeration value="Расстояние между осями объектов"/>
+																					<xs:enumeration value="Вертикальная проекция межосевого расстояния"/>
+																					<xs:enumeration value="Горизонтальная проекция межосевого расстояния"/>
+																					<xs:enumeration value="Расстояние в свету"/>
+																					<xs:enumeration value="Горизонтальная проекция расстояния в свету"/>
+																					<xs:enumeration value="Вертикальная проекция расстояния в свету"/>
+																					<xs:enumeration value="Пересекается в пространстве"/>
+																					<xs:enumeration value="Пересекается в плане"/>
+																					<xs:enumeration value="Находится внутри"/>
+																					<xs:enumeration value="Является частью"/>
+																					<xs:enumeration value="Расположено над"/>
+																					<xs:enumeration value="Расположено под"/>
+																					<xs:enumeration value="Смежно"/>
+																				</xs:restriction>
+																			</xs:simpleType>
+																		</xs:attribute>
+																	</xs:complexType>
+																</xs:element>
+															</xs:sequence>
+														</xs:complexType>
+														<xs:unique name="uniqueRelation">
+															<xs:selector xpath="Relation"/>
+															<xs:field xpath="RelationUid"/>
+														</xs:unique>
+													</xs:element>
+												</xs:sequence>
+											</xs:complexType>
+											<xs:unique name="uniqueCondition">
+												<xs:selector xpath="Entities/Entity/Properties/Property/PropertyCond | Relations/Relation/RelationCond"/>
+												<xs:field xpath="ConditionUid"/>
+											</xs:unique>
+											<xs:unique name="uniqueProperty">
+												<xs:selector xpath="Entities/Entity/Properties/Property"/>
+												<xs:field xpath="PropertyUid"/>
+											</xs:unique>
+											<xs:key name="pkeyEntityUId">
+												<xs:selector xpath="Entities/Entity"/>
+												<xs:field xpath="EntityUid"/>
+											</xs:key>
+											<xs:keyref name="fkeyTailObjId" refer="pkeyEntityUId">
+												<xs:selector xpath="Relations/Relation"/>
+												<xs:field xpath="TailObjectId"/>
+											</xs:keyref>
+											<xs:keyref name="fkeyHeadObjId" refer="pkeyEntityUId">
+												<xs:selector xpath="Relations/Relation"/>
+												<xs:field xpath="HeadObjectId"/>
+											</xs:keyref>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<!-- PROGRAMLOGIC LAYER -->
+				<xs:element name="PLOGIC" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Слой описания программной логики требования</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="PRules">
+								<xs:annotation>
+									<xs:documentation>Логика проверки требования</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="PRule" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Программное правило</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="PRuleData" type="xs:string">
+														<xs:annotation>
+															<xs:documentation>Код программного правила</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<xs:element name="PRuleText" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>Расшифровка программного правила</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<xs:element name="PRuleNotes" type="xs:string" minOccurs="0">
+														<xs:annotation>
+															<xs:documentation>Примечание к программному правилу</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+													<xs:element name="PRuleType" default="автоматический">
+														<xs:annotation>
+															<xs:documentation>Способ формирования программного правила (автоматический/ручной)</xs:documentation>
+														</xs:annotation>
+														<xs:simpleType>
+															<xs:restriction base="xs:string" >
+																<xs:enumeration value="автоматический"/>
+																<xs:enumeration value="ручной"/>
+															</xs:restriction>
+														</xs:simpleType>
+													</xs:element>
+												</xs:sequence>
+												<xs:attribute name="PRuleID" type="xs:integer">
+													<xs:annotation>
+														<xs:documentation>ID программного правила</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+								<xs:unique name="uniquePruleID">
+									<xs:selector xpath="PRule"/>
+									<xs:field xpath="@PRuleID"/>
+								</xs:unique>
+							</xs:element>
+							<xs:element name="PRealisation" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Программная реализация</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="SAPIM">
+											<xs:annotation>
+												<xs:documentation>САПИМ</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="SAPIMRuleData" type="xs:string">
+														<xs:annotation>
+															<xs:documentation>Код программного правила в САПИМ</xs:documentation>
+														</xs:annotation>
+													</xs:element>
+												</xs:sequence>
+												<xs:attribute name="NameOfSAPIM" type="xs:string" use="required">
+													<xs:annotation>
+														<xs:documentation>Наименование ПО</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+												<xs:attribute name="VersionOfSAPIM" type="xs:string" use="required">
+													<xs:annotation>
+														<xs:documentation>Версия ПО</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
